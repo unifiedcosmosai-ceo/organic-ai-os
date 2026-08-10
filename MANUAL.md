@@ -216,3 +216,37 @@ In `autonomous_organism.py`:
 ```python
 # Ersetze active_parser_code
 self.active_parser_code = 
+---
+
+## 7. CLI & Konfiguration (v4 Phase B)
+
+### 7.1 Subcommands
+
+```bash
+python app.py watch                # default: Watcher + Evolution + API
+python app.py serve --port 9000    # nur FastAPI
+python app.py parse datei.fastq    # FASTA/FASTQ Auto-Detection
+python app.py evolve-now           # Evolution jetzt ausführen
+python app.py status --json        # Memory + Hall of Fame als JSON
+python app.py demo                 # Code-Evolutions-Demo
+python app.py neuro-demo           # Prompt-Evolutions-Demo
+```
+
+### 7.2 Konfigurations-Priorität
+
+Werte werden in dieser Reihenfolge übernommen (höher überschreibt):
+
+1. `organic.toml` (falls vorhanden)
+2. Umgebungsvariablen `ORGANIC_*`
+3. Defaults in `config.py`
+
+```bash
+ORGANIC_POPULATION_SIZE=12 ORGANIC_LLM_PROVIDER=ollama python app.py watch
+```
+
+Alle unterstützten Schlüssel stehen kommentiert in `organic.toml`.
+
+### 7.3 Beispieldaten
+
+`fasta_inbox/` enthält neben FASTA-Dateien nun auch `example_small.fastq`
+zum Testen des Multi-Format-Parsers.

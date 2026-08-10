@@ -6,34 +6,42 @@ Vereint alle Layer des Projekts in einem Einstiegspunkt:
   - 09_neuro/neuro_evolving.py    Layer 09   Neuro / Prompt Cortex
   - 11_evolution/llm_evolver.py   Layer 11   Evolution / LLM Mutator
   - autonomous_organism.py        Layer 03/08 Watcher + Memory + Immunsystem
+  - bio_formats.py                Layer 03   Multi-Format Parser (FASTA/FASTQ)
+  - config.py                     Layer 05   Konfiguration (Defaults/env/organic.toml)
   - api_server.py                 Layer 12   FastAPI Status/API
 
-Start:
-  python app.py                 Watcher + naechtliche Evolution + API (Threads)
-  python app.py --api-only      nur FastAPI auf Port 8000
-  python app.py --demo          ein schneller Code-Evolutions-Durchlauf
-  python app.py --neuro-demo    ein schneller Prompt-Evolutions-Durchlauf
+CLI-Subcommands:
+  python app.py watch                Watcher + naechtliche Evolution + API (Threads)
+  python app.py serve [--port N]     nur FastAPI
+  python app.py parse <file>         Datei parsen (Auto-Detection FASTA/FASTQ)
+  python app.py evolve-now           Evolution sofort triggern
+  python app.py status               Statusreport aus Memory/Hall of Fame
+  python app.py demo                 Code-Evolutions-Demo
+  python app.py neuro-demo           Prompt-Evolutions-Demo
 """
 
 import argparse
+import json
+import sys
 import threading
 from pathlib import Path
-
-import sys
 
 ROOT = Path(__file__).parent
 for folder in ("core", "09_neuro", "11_evolution"):
     sys.path.insert(0, str(ROOT / folder))
 
 
+def _cfg(args):
+    import config
+    return config.load_config()
+
+
 def build_app():
-    """Erzeugt das FastAPI-App-Objekt aus api_server.py."""
     from api_server import app
     return app
 
 
 def run_demo():
-    """Schneller Code-Evolutions-Durchlauf (LLM-Evolver Demo)."""
     from llm_evolver import LLMMutator, FitnessEvaluator, EvolutionEngine
 
     initial = """
@@ -57,7 +65,6 @@ def gc_content(seq):
 
 
 def run_neuro_demo():
-    """Schneller Prompt-Evolutions-Durchlauf (Neuro Cortex Demo)."""
     from neuro_evolving import NeuroCortex, test_basic, test_robust
 
     cortex = NeuroCortex()
@@ -65,13 +72,74 @@ def run_neuro_demo():
     print("\nWINNER PROMPT:\n" + winner.prompt_template)
 
 
+def cmd_parse(args):
+    """Parst eine Datei mit Auto-Detection (FASTA/FASTQ)."""
+    import bio_formats
+
+    path = Path(args.file)
+    content = path.read_text(errors="ignore")
+    fmt, result = bio_formats.parse_file(content)
+    print(f"Format: {fmt} | Records: {len(result)}")
+    for header, rec in list(result.items())[:args.limit]:
+        if isinstance(rec, dict):
+            print(f"  {header}: seq={rec['seq'][:40]} qual={rec.get('qual','')[:20]}")
+        else:
+            print(f"  {header}: {rec[:60]}")
+
+
+def cmd_stats(args):
+    """Statusreport aus Memory + Hall of Fame."""
+    import io
+    import contextlib
+
+    # stdout wegleiten, damit Logger-Output nicht die JSON-Ausgabe verschmutzt
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        import autonomous_organism as ao
+
+    memory = ao.OrganismMemory()
+    hof_path = Path(ao.MEMORY_DIR) / "hall_of_fame.json"
+    hof = json.loads(hof_path.read_text()) if hof_path.exists() else []
+    report = {
+        "evolution_count": memory.data.get("evolution_count", 0),
+        "files_seen": len(memory.data.get("seen_files", {})),
+        "failures": len(memory.data.get("failures", [])),
+        "best_strands": len(memory.data.get("best_strands", {})),
+        "hall_of_fame": [{"name": h["name"], "fitness": round(h["fitness"], 3), "gen": h["generation"]} for h in hof],
+    }
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        for k, v in report.items():
+            print(f"{k}: {v}")
+    return report
+
+
+def cmd_evolve_now(args):
+    """Trigger Evolution sofort und zeige den neuen Champion."""
+    import autonomous_organism as ao
+
+    memory = ao.OrganismMemory()
+    watcher = ao.FastaWatcher(memory)
+    ao.NightlyEvolution(memory, watcher).run_nightly()
+    best = Path(ao.MEMORY_DIR) / "best_parser.py"
+    if best.exists():
+        print("\nAktueller Champion (best_parser.py):")
+        print(best.read_text()[:600])
+    if args.show_hof:
+        hof_path = Path(ao.MEMORY_DIR) / "hall_of_fame.json"
+        if hof_path.exists():
+            print("\nHall of Fame:")
+            print(hof_path.read_text()[:800])
+
+
 def run_organism(port: int = 8000):
     """Startet Watcher + naechtliche Evolution + API parallel."""
-    from autonomous_organism import main as organism_main
+    import autonomous_organism as ao
     import uvicorn
     from api_server import app
 
-    organism_thread = threading.Thread(target=organism_main, daemon=True)
+    organism_thread = threading.Thread(target=ao.main, daemon=True)
     organism_thread.start()
 
     def serve():
@@ -90,23 +158,45 @@ def run_organism(port: int = 8000):
 
 def main():
     parser = argparse.ArgumentParser(description="Organic AI OS - kombiniert alle Layer")
-    parser.add_argument("--api-only", action="store_true", help="nur FastAPI starten (Port 8000)")
-    parser.add_argument("--demo", action="store_true", help="Code-Evolutions-Demo ausfuehren")
-    parser.add_argument("--neuro-demo", action="store_true", help="Prompt-Evolutions-Demo ausfuehren")
-    parser.add_argument("--port", type=int, default=8000, help="API Port (default 8000)")
+    sub = parser.add_subparsers(dest="command")
+
+    sub.add_parser("watch", help="Watcher + naechtliche Evolution + API (default)")
+    sub.add_parser("demo", help="Code-Evolutions-Demo ausfuehren")
+    sub.add_parser("neuro-demo", help="Prompt-Evolutions-Demo ausfuehren")
+
+    serve_p = sub.add_parser("serve", help="nur FastAPI starten")
+    serve_p.add_argument("--port", type=int, default=None, help="API Port")
+
+    parse_p = sub.add_parser("parse", help="Datei parsen (FASTA/FASTQ Auto-Detection)")
+    parse_p.add_argument("file", help="Pfad zur Sequenzdatei")
+    parse_p.add_argument("--limit", type=int, default=10, help="Max. Records anzeigen")
+
+    stats_p = sub.add_parser("status", help="Statusreport aus Memory/Hall of Fame")
+    stats_p.add_argument("--json", action="store_true", help="Ausgabe als JSON")
+
+    evolve_p = sub.add_parser("evolve-now", help="Evolution sofort triggern")
+    evolve_p.add_argument("--show-hof", action="store_true", help="Hall of Fame anzeigen")
+
     args = parser.parse_args()
 
-    if args.demo:
+    if args.command == "demo":
         run_demo()
-    elif args.neuro_demo:
+    elif args.command == "neuro-demo":
         run_neuro_demo()
-    elif args.api_only:
+    elif args.command == "parse":
+        cmd_parse(args)
+    elif args.command == "status":
+        cmd_stats(args)
+    elif args.command == "evolve-now":
+        cmd_evolve_now(args)
+    elif args.command == "serve":
         import uvicorn
         from api_server import app
 
-        uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")
-    else:
-        run_organism(port=args.port)
+        port = args.port or _cfg(args)["port"]
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")
+    else:  # default: watch
+        run_organism(port=_cfg(args)["port"])
 
 
 if __name__ == "__main__":

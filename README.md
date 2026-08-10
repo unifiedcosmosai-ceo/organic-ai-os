@@ -60,6 +60,20 @@ curl http://localhost:8000/memory | jq
 - **🏆 Hall of Fame** — die Top-5 Gen-Strands werden als Fossilien erhalten (`memory/hall_of_fame.json`), Diversity-Guard verhindert redundanten Code
 - **🛡️ Bugfixes** — `emergency_heal` (war immer aktiv) + `detect_atypical` Präzedenz korrigiert
 
+### v4 Phase B (Config + CLI + Multi-Format)
+
+- **🔬 Multi-Format Parser** — `bio_formats.py` mit Auto-Detection für FASTA **und** FASTQ (`python app.py parse`)
+- **⚙️ Konfiguration** — `config.py` mit Priorität *Defaults < Umgebungsvariablen (`ORGANIC_*`) < `organic.toml`*
+- **🖥️ CLI-Subcommands** — `watch`, `serve`, `parse`, `evolve-now`, `status` (mit `--json`) unter `app.py`
+- **📄 Beispieldateien** — `fasta_inbox/example_small.fastq` für sofortiges Testen
+
+```bash
+python app.py parse fasta_inbox/example_small.fastq   # FASTA/FASTQ Auto-Detection
+python app.py status --json                           # Statusreport als JSON
+python app.py evolve-now --show-hof                   # Evolution jetzt triggern
+ORGANIC_PORT=9000 python app.py serve                 # Konfig per Environment
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat
