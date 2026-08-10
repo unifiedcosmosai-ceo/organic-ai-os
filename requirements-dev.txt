@@ -1,0 +1,4 @@
+# Entwicklung-Only deps für Tests
+pytest
+httpx
+pytest-cov
