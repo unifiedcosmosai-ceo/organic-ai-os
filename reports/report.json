@@ -1,0 +1,45 @@
+{
+  "evolution_count": 3,
+  "files_seen": 3,
+  "failures": 0,
+  "hall_of_fame": [
+    {
+      "name": "nightly_adam",
+      "fitness": 1.0,
+      "generation": 0
+    },
+    {
+      "name": "nightly_adam_seed_1",
+      "fitness": 1.0,
+      "generation": 1
+    },
+    {
+      "name": "nightly_adam_seed_0",
+      "fitness": 0.167,
+      "generation": 1
+    },
+    {
+      "name": "nightly_adam_seed_6",
+      "fitness": 0.167,
+      "generation": 1
+    },
+    {
+      "name": "nightly_adam_seed_4",
+      "fitness": 0.167,
+      "generation": 1
+    }
+  ],
+  "symbiom_hall_of_fame": [
+    {
+      "name": "robust_0",
+      "speciality": "robust",
+      "fitness": 1.0
+    },
+    {
+      "name": "robust_2",
+      "speciality": "robust",
+      "fitness": 0.0
+    }
+  ],
+  "generated_at": "2026-08-11T01:28:14.173496"
+}
