@@ -370,3 +370,29 @@ Report JSON/HTML generiert
 make all    → 37 passed
 LLMMutator("ollama") ohne ollama → stdout, kein Traceback
 ```
+
+## 14. v5 Phase 1: MCTS-Evolutions-Kern
+
+**User:** (Fortsetzung der v5-Serie, Basis: `v4/finale`)
+
+**Assistant:**
+- **Branch**: `v5/mcts-core` (aus `v4/finale`); `.gitignore` um generierte Laufzeit-Artefakte erweitert
+- **`11_evolution/mcts_evolver.py`**: Monte-Carlo-Tree-Search als Evolutions-Suchkern
+  - `MCTNode` mit UCB1-Selection (Exploration/Exploitation, `c=1.4`)
+  - Bi-level (BEAM-Stil): Struktur-Operatoren = alle MUTATION_PROMPTS; Funktionen per MCTS
+  - Process-Reward-Backprop: `value += reward·0.9^depth`
+  - `_best_confirmed`: Fitness + visits (anti-Pseudo-Correctness)
+  - `adversarial_tests()`: AdverMCTS-light mit 3 versteckten Grenzfaellen
+  - `BizFitness`: Korrektheit + Kompaktheits-Praemie (RPM-Idee)
+- **CLI**: `app.py mcts-evolve --iterations N --tests base|adversarial [--seed-code]`
+- **Bugfix (Escaping)**: CLI-Testdaten nutzten `\\n` (Literal-Backslash) waehrend der Seed auf echte Newlines splittete → Tests schlugen still fehl (fit 0.167); auf echte `\n` umgestellt → base fit=1.0, adversarial fit=0.864
+- **Tests**: `tests/test_mcts_evolver.py`, 10 Tests; Gesamtstand `make test` → **47 passed**
+- **Makefile**: `make test-mcts`-Ziel
+- **Doku**: MANUAL §12, DOCS §12, README „v5 Phase 1", CHAT_LOG §14
+
+### Demonstriert
+```
+47 passed in 1.20s
+python app.py mcts-evolve --tests base        → Champion fit=1.000
+python app.py mcts-evolve --tests adversarial → Champion fit=0.864 (Grenzfaelle aktiv)
+```

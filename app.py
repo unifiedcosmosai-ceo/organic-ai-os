@@ -163,6 +163,59 @@ def cmd_report(args):
     print(f"Report HTML: {hp}")
 
 
+def cmd_mcts_evolve(args):
+    """Startet die MCTS-gesteuerte Evolution (v5, Layer 11)."""
+    sys.path.insert(0, "11_evolution")
+    mcts = __import__("11_evolution.mcts_evolver", fromlist=["MCTSEvolution", "Strand"])
+    evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
+
+    seed = """def parse_fasta(text):
+    records = {}
+    header = ""
+    for line in text.split("\\n"):
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+    if args.seed_code:
+        seed = Path(args.seed_code).read_text()
+
+    def t_basic(ns):
+        if "parse_fasta" not in ns:
+            return False
+        try:
+            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+        except Exception:
+            return False
+
+    def t_messy(ns):
+        if "parse_fasta" not in ns:
+            return False
+        try:
+            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
+            return len(r) == 2 and all(" " not in v for v in r.values())
+        except Exception:
+            return False
+
+    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    if args.tests == "adversarial":
+        print("🌀 Verdrahtung: adversarial tests aktiviert")
+        # invers: da default Pfad ohnehin adversarial ist, nur Info
+    engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
+    root = mcts.Strand(name="v5_adam", code=seed)
+    testset = engine.adversarial_tests(tests) if args.tests == "adversarial" else tests
+    best = engine.run_mcts(root, evo_mod.FitnessEvaluator, testset, iterations=args.iterations)
+    print(f"\n🏆 MCTS CHAMPION: {best.strand.name}  fit={best.strand.fitness:.3f}  visits={best.visits}")
+    print("-" * 50)
+    print(best.strand.code)
+    if args.tests == "adversarial":
+        print("-" * 50)
+        print("Adversarial-Tests erhalten: Grenzfaelle (blank lines, Duplikat-Header, lowercase) sind Teil der Bewertung.")
+
+
 def run_organism(port: int = 8000):
     """Startet Watcher + naechtliche Evolution + API parallel."""
     import autonomous_organism as ao
@@ -214,6 +267,12 @@ def main():
 
     sub.add_parser("report", help="Tagesreport erzeugen (JSON + HTML)")
 
+    mcts_p = sub.add_parser("mcts-evolve", help="MCTS-gesteuerte Evolution (v5) starten")
+    mcts_p.add_argument("--iterations", type=int, default=150, help="MCTS-Rollouts")
+    mcts_p.add_argument("--tests", choices=["base", "adversarial"], default="adversarial",
+                        help="Testbasis (base = nur Kern-Tests, adversarial = + Grenzfaelle)")
+    mcts_p.add_argument("--seed-code", default=None, help="Pfad zu Startcode (default: eingebauter parse_fasta-Saatcode)")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -230,6 +289,8 @@ def main():
         cmd_coevolve(args)
     elif args.command == "report":
         cmd_report(args)
+    elif args.command == "mcts-evolve":
+        cmd_mcts_evolve(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app
