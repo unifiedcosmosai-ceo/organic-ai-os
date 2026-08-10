@@ -1,10 +1,6 @@
 """Tests für config.py (Konfigurations-Layer)."""
 
 import os
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 os.environ.pop("ORGANIC_PORT", None)
 os.environ.pop("ORGANIC_POPULATION_SIZE", None)

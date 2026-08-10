@@ -1,14 +1,5 @@
 """Tests für den Symbiom-Schwarm und Co-Evolution (Phase D)."""
 
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "10_symbiom"))
-sys.path.insert(0, str(ROOT / "09_neuro"))
-sys.path.insert(0, str(ROOT / "11_evolution"))
-
 from symbiom_swarm import SymbiomSwarm, _test_parse, _test_messy
 
 

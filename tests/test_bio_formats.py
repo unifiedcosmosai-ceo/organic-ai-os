@@ -1,10 +1,5 @@
 """Tests für bio_formats.py (Multi-Format Parser)."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import bio_formats
 
 

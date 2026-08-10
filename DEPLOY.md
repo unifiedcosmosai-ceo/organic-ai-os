@@ -16,6 +16,7 @@ docker exec organic_ollama ollama pull mistral
 
 # 4. In .env oder docker-compose.yml setzen:
 # LLM_PROVIDER=ollama
+# Hinweis: Fehlt das ollama-Paket, faellt der Mutator automatisch auf AST-Philosophie zurück (kein Crash).
 
 # 5. FASTA Files reinwerfen
 cp ~/my_data/*.fasta ./fasta_inbox/
@@ -23,6 +24,9 @@ cp ~/my_data/*.fasta ./fasta_inbox/
 # 6. Status API
 curl http://localhost:8000/memory
 curl http://localhost:8000/best_parser
+
+# 7. Regression lokal (optional, auf dem Host)
+python3 -m pytest tests/ -v
 ```
 
 ## Systemd auf Bare Metal Server

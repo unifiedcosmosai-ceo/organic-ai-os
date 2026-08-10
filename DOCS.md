@@ -423,3 +423,30 @@ Die `status --json`-Ausgabe wird per `contextlib.redirect_stdout` von Logger-Out
 ---
 
 *Technische Doku v1.3 - 2026-08-11 (v4 Phase D)*
+
+---
+
+## 11. v4 Finale: Ollama-Anbindung, Regression & CI
+
+### 11.1 Llama-Provider (`llm_evolver.py`)
+
+`LLMMutator("ollama")` verdrahtet jetzt `OllamaMutator` aus `ollama_integration.py`:
+- lazy `import ollama` → Import des Moduls crasht nie
+- `except ConnectionError` → Fallback auf `_fallback_mutate` (AST-basiert)
+- toter Stub entfernt
+
+### 11.2 Regressions-Suite (`tests/test_regression.py`)
+
+| Gruppe | Deckt ab |
+|---|---|
+| Einstiegspunkte | `organic_ai_os_evolving*.py` werfen keine Tracebacks |
+| Ollama | Import crasht nie; fehlend → clear `ConnectionError` |
+| LLMMutator | `fallback` und `ollama`-Provider (Silent-Fallback) |
+| CLI | `parse`, `status --json` (valides JSON), `report` |
+| Stub-Check | kein toter `# import ollama`-Code mehr |
+
+### 11.3 CI + Makefile
+
+- `.github/workflows/ci.yml`: compileall → Regressions-Suite → Coverage
+- `make all` / `make test` / `make test-regression` / `make report`
+- `tests/conftest.py`: zentrales sys.path-Setup (keine Boilerplate je Datei)
