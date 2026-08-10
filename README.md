@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Bio-Inspired-Organic%20Code-brightgreen?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Layer-12%20Layer%20OS-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/v4-optimisations-brightgreen?style=for-the-badge" />
 </p>
 
 <h1 align="center">🧬 Organic AI OS</h1>
@@ -41,7 +42,7 @@ cd organic-ai-os
 docker compose up --build -d
 docker exec organic_ollama ollama pull codellama:7b
 
-# Eigene FASTA reinwerfen - Organismus lernt live
+# Eigene FASTA reinwerfen - Organismus lernt live (SOFORT, event-getrieben)
 cp ~/my_data/*.fasta ./fasta_inbox/
 docker logs -f organic_ai_organism
 
@@ -49,7 +50,15 @@ docker logs -f organic_ai_organism
 curl http://localhost:8000/memory | jq
 ```
 
-**Fertig.** Watcher alle 10s, Evolution jede Nacht um 02:00.
+**Fertig.** Watcher event-getrieben (≤1s), Evolution nachts um 02:00.
+
+## 🚀 Was ist neu in v4 (Optimisations Phase)
+
+- **⚡ Event-getriebener Watcher** — `watchdog`-Events statt 10s Polling; automatischer Polling-Fallback
+- **💾 Robustes Memory** — atomare JSON-Writes (kein Korruptionsrisiko), relative Pfade + einmalige Migration alter `/mnt/data`-Pfade
+- **📜 Strukturiertes Logging** — rotierende `logs/organism.log` mit SCAN/HEAL/EVOLUTION/BOOT Events
+- **🏆 Hall of Fame** — die Top-5 Gen-Strands werden als Fossilien erhalten (`memory/hall_of_fame.json`), Diversity-Guard verhindert redundanten Code
+- **🛡️ Bugfixes** — `emergency_heal` (war immer aktiv) + `detect_atypical` Präzedenz korrigiert
 
 ---
 
@@ -133,18 +142,20 @@ def parse_fasta(text):
 
 ```
 📁 fasta_inbox/ (du wirfst Files rein)
-   ↓ alle 10s
-👁️ FastaWatcher.try_parse()
+   ↓ SOFORT (watchdog Event, ≤1s)
+👁️ FastaWatcher.scan_once()
    ├─ ✅ ok → remember_file()
    └─ ❌ fail → emergency_heal() sofort
            ↓
-💾 memory/organism_memory.json
+🗒️ logs/organism.log (rotierend, strukturiert)
+💾 memory/organism_memory.json (atomare Writes, relative Pfade)
    ↓ sammelt atypische Muster
 🌙 NightlyEvolution 02:00 Uhr
    ├─ baut Tests aus echten Failures
    ├─ EvolutionEngine: 8 Parser, 10 Gen
    ├─ vergleicht alt vs neu
    └─ nur wenn besser → best_parser.py
+   └─ Hall of Fame → memory/hall_of_fame.json (Top-5 Fossilien)
 ```
 
 **Beispiel:**

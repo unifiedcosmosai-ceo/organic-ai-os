@@ -190,13 +190,14 @@ Gen3: "Du bist Senior... Requirements: strip(), splitlines()... Beispiel: ..." (
 
 ```
 OrganismMemory
-  - seen_files: {path: {hash, size, parsed_ok, atypical}}
+  - seen_files: {path: {hash, size, parsed_ok, atypical}}  (relative Pfade)
   - failures: [{file, error, atypical}]
-  - best_strands: {gen: {fitness, code}}
+  - best_strands: {gen: {fitness, code, lineage}}
   - evolution_count: int
+  - atomare Writes (tmp + os.replace), einmalige /mnt/data-Pfad-Migration
 
-FastaWatcher (Live, alle 10s)
-  - scan_once(): glob *.fa*
+FastaWatcher (Live, event-getrieben)
+  - scan_once(): liest neue/changed Files
   - try_parse(): exec(best_parser.py)
   - remember_file(): in Memory
   - emergency_heal(): sofortige Heilung bei Fehler
@@ -206,6 +207,16 @@ NightlyEvolution (02:00 Uhr)
   - run_nightly(): EvolutionEngine + Tests
   - Vergleicht alt vs neu Score
   - Übernimmt nur wenn besser
+  - Hall of Fame: speichert Top-5 Strands (hall_of_fame.json, Diversity-Guard)
+
+Watcher (watcher.py)
+  - watchdog.Observer Event-Stream (created/modified/moved)
+  - automatischer Polling-Fallback wenn watchdog fehlt
+  - daemonisiert, stop() für sauberes Herunterfahren
+
+Logging (organics_log.py)
+  - RotatingFileHandler logs/organism.log (1MB x 3)
+  - strukturierte Events: BOOT/SCAN/IMMUN/EVOLUTION/ERROR
 ```
 
 ### 4.2 Atypische Erkennung

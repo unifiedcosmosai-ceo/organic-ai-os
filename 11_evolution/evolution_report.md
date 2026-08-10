@@ -13,3 +13,10 @@ Verbesserungen:
 - Pre-compiled regex für Speed
 
 Lineage: weak -> Gen1 -> Gen2 -> Gen3
+
+## v4 Update (Phase A)
+
+- EvolutionEngine erweitert: Hall of Fame (Top-5), Diversity-Guard
+- Lineage-Tracking pro Strand in memory/best_strands
+- Neuer Report-Ausgang: memory/hall_of_fame.json
+- Structured Evolution-Events in logs/organism.log

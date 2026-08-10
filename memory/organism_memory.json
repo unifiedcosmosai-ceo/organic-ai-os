@@ -1,21 +1,21 @@
 {
   "seen_files": {
-    "/mnt/data/organic_ai_platform/fasta_inbox/example_clean.fasta": {
+    "fasta_inbox/example_clean.fasta": {
       "hash": "6ab1675e",
       "size": 30,
       "parsed_ok": true,
       "error": "",
-      "timestamp": "2026-08-09T07:12:12.466748",
+      "timestamp": "2026-08-10T23:49:09.941254",
       "atypical": {
         "lowercase": true
       }
     },
-    "/mnt/data/organic_ai_platform/fasta_inbox/example_messy.fasta": {
+    "fasta_inbox/example_messy.fasta": {
       "hash": "a0664956",
       "size": 63,
       "parsed_ok": true,
       "error": "",
-      "timestamp": "2026-08-09T07:12:12.467111",
+      "timestamp": "2026-08-10T23:49:09.940346",
       "atypical": {
         "spaces_in_seq": true,
         "lowercase": true,
@@ -23,35 +23,12 @@
         "uniprot_format": true
       }
     },
-    "/home/loucypher/Downloads/organic-ai-os/fasta_inbox/example_messy.fasta": {
-      "hash": "a0664956",
-      "size": 63,
-      "parsed_ok": true,
-      "error": "",
-      "timestamp": "2026-08-10T23:28:15.236589",
-      "atypical": {
-        "spaces_in_seq": true,
-        "lowercase": true,
-        "double_spaces": true,
-        "uniprot_format": true
-      }
-    },
-    "/home/loucypher/Downloads/organic-ai-os/fasta_inbox/example_clean.fasta": {
-      "hash": "6ab1675e",
-      "size": 30,
-      "parsed_ok": true,
-      "error": "",
-      "timestamp": "2026-08-10T23:28:15.237607",
-      "atypical": {
-        "lowercase": true
-      }
-    },
-    "/home/loucypher/Downloads/organic-ai-os/fasta_inbox/uniprot_tricky.fasta": {
+    "fasta_inbox/uniprot_tricky.fasta": {
       "hash": "ef8d609d",
       "size": 133,
       "parsed_ok": true,
       "error": "",
-      "timestamp": "2026-08-10T23:28:15.241420",
+      "timestamp": "2026-08-10T23:49:09.941989",
       "atypical": {
         "spaces_in_seq": true,
         "lowercase": true,
@@ -61,7 +38,26 @@
     }
   },
   "failures": [],
-  "best_strands": {},
+  "best_strands": {
+    "gen_0": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-10T23:48:32.747114"
+    },
+    "gen_1": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-10T23:49:07.321979"
+    },
+    "gen_2": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-10T23:49:10.971674"
+    }
+  },
   "prompt_history": [],
-  "evolution_count": 0
+  "evolution_count": 3
 }

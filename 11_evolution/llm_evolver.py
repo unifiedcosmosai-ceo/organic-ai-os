@@ -228,12 +228,27 @@ Erzeuge ein Kind das beide Stärken kombiniert.
 
 # --- EVOLUTIONS-ENGINE ---
 class EvolutionEngine:
-    def __init__(self, population_size=8, mutator=None):
+    def __init__(self, population_size=8, mutator=None, hall_of_fame_size=5):
         self.population: List[Strand] = []
         self.history: List[List[Strand]] = []
         self.mutator = mutator or LLMMutator("fallback")
         self.pop_size = population_size
-    
+        self.hall_of_fame: List[Strand] = []
+        self.hall_of_fame_size = hall_of_fame_size
+
+    def _update_hall_of_fame(self):
+        candidates = self.population + self.hall_of_fame
+        # Diversity Guard: verwerfe nahezu identischen Code, kuerzester gewinnt
+        unique: List[Strand] = []
+        seen_codes = set()
+        for s in sorted(candidates, key=lambda x: (x.fitness, -len(x.code)), reverse=True):
+            key = re.sub(r"\s+", "", s.code)[:200]
+            if key in seen_codes:
+                continue
+            seen_codes.add(key)
+            unique.append(s)
+        self.hall_of_fame = unique[: self.hall_of_fame_size]
+
     def seed(self, initial_code: str, name="adam"):
         adam = Strand(name=name, code=initial_code, fitness=0.0, generation=0)
         self.population = [adam]
@@ -256,6 +271,7 @@ class EvolutionEngine:
             print(f"Gen {gen}: Best {best.name} Fit={best.fitness:.3f} [{best.metadata.get('mutation','seed')}]")
             
             self.history.append(self.population.copy())
+            self._update_hall_of_fame()
             
             if best.fitness >= 0.95:
                 print(f"🎯 Perfekte Fitness erreicht in Gen {gen}!")

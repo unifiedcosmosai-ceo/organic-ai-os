@@ -3,9 +3,7 @@
 ## Schnellstart Docker (empfohlen)
 
 ```bash
-cd /mnt/data/organic_ai_platform
-
-# 1. Build & Start
+# Im Repo-Ordner (z.B. ./organic-ai-os)
 docker compose up --build -d
 
 # 2. Logs
@@ -53,9 +51,10 @@ sudo systemctl status organic-organism-nightly.timer
 ## Monitoring
 
 - API: http://localhost:8000
-- Logs: ./logs/ oder docker logs
-- Memory: ./memory/organism_memory.json
-- Inbox: ./fasta_inbox/
+- Logs: ./logs/organism.log (rotierend, strukturiert: SCAN/HEAL/EVOLUTION/BOOT)
+- Memory: ./memory/organism_memory.json (atomare Writes, relative Pfade)
+- Hall of Fame: ./memory/hall_of_fame.json (Top-5 Gen-Fossilien)
+- Inbox: ./fasta_inbox/ (event-getrieben via watchdog, Polling-Fallback)
 
 ## Autonomer Loop anpassen
 

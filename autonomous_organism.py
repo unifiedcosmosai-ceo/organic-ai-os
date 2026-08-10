@@ -6,12 +6,16 @@ Beobachtet Ordner, lernt aus echten Daten, verbessert sich nachts
 Run: python autonomous_organism.py
 """
 
-import time, json, hashlib, ast, re, random
+import time, json, hashlib, ast, re, random, os, signal, sys
 from pathlib import Path
 from datetime import datetime, timedelta
 import threading
 from dataclasses import dataclass, field
 from typing import List, Dict
+
+from organics_log import get_logger, event
+
+logger = get_logger("organism")
 
 # Import aus deinen Layern
 import sys
@@ -83,18 +87,56 @@ class OrganismMemory:
     def __init__(self):
         self.db_path = MEMORY_DIR / "organism_memory.json"
         self.data = self.load()
-    
+        self.migrate_stale_paths()
+
     def load(self):
         if self.db_path.exists():
             return json.loads(self.db_path.read_text())
         return {"seen_files": {}, "failures": [], "best_strands": {}, "prompt_history": [], "evolution_count": 0}
-    
+
+    def migrate_stale_paths(self):
+        """Migriert absolute Alt-Pfade (z.B. /mnt/data/...) auf relative Pfade."""
+        moved = False
+        for key in list(self.data.get("seen_files", {})):
+            if key.startswith("/"):
+                # extrahiere den Teil ab fasta_inbox/ (oder ersten "inbox" Teil)
+                for marker in ("organic_ai_platform/", "fasta_inbox/"):
+                    if marker in key:
+                        rel = key.split(marker, 1)[1]
+                        break
+                else:
+                    rel = None
+                if rel and rel not in self.data["seen_files"]:
+                    self.data["seen_files"]["fasta_inbox/" + rel] = self.data["seen_files"].pop(key)
+                    moved = True
+        failures = self.data.get("failures", [])
+        for f in failures:
+            if isinstance(f.get("file"), str) and f["file"].startswith("/"):
+                for marker in ("organic_ai_platform/", "fasta_inbox/"):
+                    if marker in f["file"]:
+                        f["file"] = "fasta_inbox/" + f["file"].split(marker, 1)[1]
+                        moved = True
+                        break
+        if moved:
+            self.save()
+            logger.info("Memory Alt-Pfade (absolut) nach relativ migriert")
+
     def save(self):
-        self.db_path.write_text(json.dumps(self.data, indent=2))
+        """Atomar schreiben: erst tmp-Datei, dann rename - kein Datenverlust bei Crash."""
+        tmp_path = self.db_path.with_suffix(".json.tmp")
+        tmp_path.write_text(json.dumps(self.data, indent=2))
+        os.replace(tmp_path, self.db_path)
     
+    def _relkey(self, filepath: Path) -> str:
+        """Normiert einen Pfad zu relativem Schlüssel (portabel über Maschinen hinweg)."""
+        try:
+            return str(filepath.resolve().relative_to(Path(__file__).resolve().parent))
+        except ValueError:
+            return str(filepath)
+
     def remember_file(self, filepath: Path, content: str, parsed_ok: bool, error=""):
         h = hashlib.md5(content.encode()).hexdigest()[:8]
-        self.data["seen_files"][str(filepath)] = {
+        self.data["seen_files"][self._relkey(filepath)] = {
             "hash": h,
             "size": len(content),
             "parsed_ok": parsed_ok,
@@ -103,13 +145,15 @@ class OrganismMemory:
             "atypical": self.detect_atypical(content)
         }
         if not parsed_ok:
-            self.data["failures"].append({"file": str(filepath), "error": error, "atypical": self.detect_atypical(content)})
+            self.data["failures"].append({"file": self._relkey(filepath), "error": error, "atypical": self.detect_atypical(content)})
         self.save()
     
     def detect_atypical(self, content: str) -> Dict:
         """Erkennt ungewöhnliche FASTA Merkmale - das löst Evolution aus"""
         atypical = {}
-        if " " in content.splitlines()[1] if len(content.splitlines())>1 else False:
+        lines = content.splitlines()
+        second_line = lines[1] if len(lines) > 1 else ""
+        if " " in second_line:
             atypical["spaces_in_seq"] = True
         if any(c.islower() for c in content):
             atypical["lowercase"] = True
@@ -163,14 +207,16 @@ def parse_fasta(text):
             return False, None, str(e)
     
     def scan_once(self):
-        print(f"\n👁️  SCAN {WATCH_DIR} um {datetime.now().strftime('%H:%M:%S')}")
+        event(logger, "SCAN", f"{WATCH_DIR} um {datetime.now().strftime('%H:%M:%S')}")
         for fasta_file in WATCH_DIR.glob("*.fa*"):
             if fasta_file.suffix in [".fasta",".fa",".txt",".fas"]:
                 content = fasta_file.read_text(errors="ignore")
                 ok, result, err = self.try_parse(content)
                 is_new = str(fasta_file) not in self.memory.data["seen_files"]
                 if is_new or not ok:
-                    print(f" {'✅' if ok else '❌'} {fasta_file.name}: ok={ok} {err[:60] if err else f'{len(result)} records'}")
+                    status = "ok" if ok else f"error {err[:60]}"
+                    detail = f"{len(result)} records" if ok else ""
+                    event(logger, "SCAN", f"{fasta_file.name}: ok={ok} {status} {detail}")
                     if not is_new and ok:
                         # schon gesehen und ok - skip
                         continue
@@ -178,7 +224,7 @@ def parse_fasta(text):
                 
                 # Wenn Fehler -> sofortige Notfall-Heilung (Layer 08 Immunsystem)
                 if not ok:
-                    print(f" 🚨 Immunsystem triggert Schnell-Heilung für {fasta_file.name}")
+                    event(logger, "IMMUN", f"Schnell-Heilung fuer {fasta_file.name}: {err[:80]}", level=logger.warning)
                     self.emergency_heal(err, content)
     
     def emergency_heal(self, error: str, content: str):
@@ -187,10 +233,9 @@ def parse_fasta(text):
         if "strip()" not in code:
             code = code.replace("line", "line.strip()")
             code = code.replace("s=line.strip()", "s=line.strip()")
-        if "upper()" not in code and "lowercase" in error.lower() or True:
+        if "upper()" not in code:
             # generell upper hinzufügen
-            if "upper()" not in code:
-                code = code.replace('buf.append(s)', 'buf.append(s.upper())')
+            code = code.replace('buf.append(s)', 'buf.append(s.upper())')
         
         # Teste Heilung
         try:
@@ -198,13 +243,13 @@ def parse_fasta(text):
             exec(code, {}, ns)
             fn=ns["parse_fasta"]
             fn(content)
-            print(f" 🩹 Heilung erfolgreich - neuer Parser gespeichert")
+            event(logger, "IMMUN", "Heilung erfolgreich - neuer Parser gespeichert")
             (MEMORY_DIR / "best_parser.py").write_text(code)
             self.active_parser_code = code
             self.memory.data["best_strands"]["emergency_heal"] = {"code": code, "time": datetime.now().isoformat()}
             self.memory.save()
         except Exception as e:
-            print(f" Heilung fehlgeschlagen: {e}")
+            event(logger, "IMMUN", f"Heilung fehlgeschlagen: {e}", level=logger.error)
 
 # --- NÄCHTLICHE EVOLUTION ---
 class NightlyEvolution:
@@ -274,11 +319,11 @@ class NightlyEvolution:
         except: return False
     
     def run_nightly(self):
-        print(f"\n🌙 NÄCHTLICHE EVOLUTION {datetime.now()}")
-        print(f" Failures in Memory: {len(self.memory.data['failures'])}")
+        event(logger, "EVOLUTION", f"Naechtliche Evolution {datetime.now()}")
+        event(logger, "EVOLUTION", f"Failures in Memory: {len(self.memory.data['failures'])}")
         
         tests = self.build_tests_from_failures()
-        print(f" Baue {len(tests)} Tests aus echten Daten")
+        event(logger, "EVOLUTION", f"Baue {len(tests)} Tests aus echten Daten")
         
         # Hole aktuellen besten Parser
         current_code = self.watcher.active_parser_code
@@ -286,12 +331,11 @@ class NightlyEvolution:
         # Evolviere mit deiner Engine
         try:
             mutator = LLMMutator("fallback")
-            engine = EvolutionEngine(population_size=8, mutator=mutator)
+            engine = EvolutionEngine(population_size=8, mutator=mutator, hall_of_fame_size=5)
             engine.seed(current_code, name="nightly_adam")
             winner = engine.evolve(FitnessEvaluator, tests, generations=10)
             
-            print(f"\n🏆 NACHT WINNER Fit={winner.fitness:.3f} Gen={winner.generation}")
-            print(winner.code[:500])
+            event(logger, "EVOLUTION", f"NACHT WINNER {winner.name} Fit={winner.fitness:.3f} Gen={winner.generation}")
             
             # Speichere wenn besser
             # Teste gegen alten
@@ -309,7 +353,7 @@ class NightlyEvolution:
             old_score = eval_code(current_code)
             new_score = eval_code(winner.code)
             
-            print(f" Old Score {old_score:.3f} vs New {new_score:.3f}")
+            event(logger, "EVOLUTION", f"Old Score {old_score:.3f} vs New {new_score:.3f}")
             
             if new_score >= old_score:
                 (MEMORY_DIR / "best_parser.py").write_text(winner.code)
@@ -318,64 +362,99 @@ class NightlyEvolution:
                 self.memory.data["best_strands"][f"gen_{self.memory.data['evolution_count']}"] = {
                     "fitness": winner.fitness,
                     "code": winner.code[:1000],
+                    "lineage": winner.lineage,
                     "time": datetime.now().isoformat()
                 }
                 self.memory.data["evolution_count"] += 1
+                self._save_hall_of_fame(engine, tests)
                 self.memory.save()
-                print(f" ✅ Neuer Parser übernommen - Evolution {self.memory.data['evolution_count']}")
+                event(logger, "EVOLUTION", f"Neuer Parser übernommen - Evolution {self.memory.data['evolution_count']}")
             else:
-                print(" ❌ Neuer Parser schlechter - verworfen")
+                event(logger, "EVOLUTION", "Neuer Parser schlechter - verworfen")
+                self._save_hall_of_fame(engine, tests)
                 
         except Exception as e:
-            print(f" Evolution Fehler: {e}")
+            event(logger, "EVOLUTION", f"Evolution Fehler: {e}", level=logger.error)
             import traceback
             traceback.print_exc()
 
+    def _save_hall_of_fame(self, engine, tests):
+        """Persistiert die Top-N Strands der Evolution als fossile Gene.""" 
+        def eval_code(code):
+            score=0
+            for fn,w in tests:
+                try:
+                    ns={}
+                    exec(code, {}, ns)
+                    score+= (1.0 if fn(ns) else 0.0)*w
+                except:
+                    pass
+            return score
+        hof = [
+            {
+                "name": s.name,
+                "fitness": s.fitness,
+                "score": eval_code(s.code),
+                "generation": s.generation,
+                "lineage": s.lineage,
+                "code": s.code[:500],
+            }
+            for s in engine.hall_of_fame
+        ]
+        (MEMORY_DIR / "hall_of_fame.json").write_text(json.dumps(hof, indent=2))
+
 # --- MAIN LOOP ---
-def main():
+def main(nightly_interval: float = 120.0, enable_watcher: bool = True):
     memory = OrganismMemory()
     watcher = FastaWatcher(memory)
     nightly = NightlyEvolution(memory, watcher)
     
-    print("🧬 ORGANISMUS STARTET")
-    print(f" Watch Dir: {WATCH_DIR}")
-    print(f" Memory: {MEMORY_DIR}")
-    print(f" Lege FASTA Files in {WATCH_DIR} ab - ich lerne live")
-    print(" Für nächtliche Evolution: läuft täglich um 02:00 oder jetzt mit Taste 'e'")
+    event(logger, "BOOT", "ORGANISMUS STARTET")
+    event(logger, "BOOT", f"Watch Dir: {WATCH_DIR}")
+    event(logger, "BOOT", f"Memory: {MEMORY_DIR}")
+    event(logger, "BOOT", f"Lege FASTA Files in {WATCH_DIR} ab - ich lerne live")
     
     # Initial scan
     watcher.scan_once()
     
     # Erstelle Beispiel FASTAs falls leer
     if not list(WATCH_DIR.glob("*.fa*")):
-        print("\n📁 Erstelle Beispiel FASTAs...")
+        event(logger, "BOOT", "Erstelle Beispiel FASTAs...")
         (WATCH_DIR / "example_clean.fasta").write_text(">seq1\nATGCATGC\n>seq2\nGGGGCCCC\n")
         (WATCH_DIR / "example_messy.fasta").write_text(">sp|P69905|HBA_HUMAN messy\n  atgc atgc  \n\n>seq2 lower\natgcatgc\n")
         (WATCH_DIR / "example_huge.fasta").write_text((">s\nATGC\n"*100))
         watcher.scan_once()
     
+    # Event-getriebener Watcher (Layer 08) mit Polling-Fallback
+    from watcher import DirectoryWatcher
+    dir_watcher = DirectoryWatcher(WATCH_DIR, on_file=lambda p, k: watcher.scan_once(), interval=2.0)
+    if enable_watcher:
+        dir_watcher.start()
+    
     last_nightly = datetime.now() - timedelta(days=1)
+    
+    def shutdown(signum=None, frame=None):
+        event(logger, "BOOT", "Organismus gestoppt")
+        dir_watcher.stop()
+        memory.save()
+        if signum is not None:
+            sys.exit(0)
+    
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGTERM, shutdown)
     
     # Loop
     try:
         while True:
-            # 1. Live Watch alle 10 Sekunden
-            time.sleep(10)
-            watcher.scan_once()
-            
-            # 2. Nächtliche Evolution um 02:00 oder alle 2 Minuten im Demo Modus
+            time.sleep(1)
             now = datetime.now()
-            # Demo: alle 2 Minuten evolvieren
-            if (now - last_nightly).total_seconds() > 120:  # 120 Sek für Demo, in Prod: check hour==2
+            # Nächtliche Evolution: alle N Sekunden (Demo) oder um 02:00 (Prod)
+            if (now - last_nightly).total_seconds() > nightly_interval:
                 nightly.run_nightly()
                 last_nightly = now
-            
-            # Status
-            print(f"\n💤 Organismus schläft... Evolutionen: {memory.data['evolution_count']} Files gesehen: {len(memory.data['seen_files'])} | Ctrl+C zum Stoppen")
-            
+
     except KeyboardInterrupt:
-        print("\n🛑 Organismus gestoppt")
-        memory.save()
+        shutdown()
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 
 # GitHub Push Anleitung
 
-Dein Repo ist bereit in: /mnt/data/organic_ai_platform
+Dein Repo ist bereit: dieser Ordner (`organic-ai-os`).
 
 ## Option 1: GitHub Website (einfachste)
 
@@ -46,6 +46,10 @@ gh repo create organic-ai-os --public --source=. --remote=origin --push
 - organic-organism.service + install.sh
 - fasta_inbox/examples
 - memory/best_parser_example
+
+Repository-Hinweise:
+- `kali-linux-docker/` ist ein separates eingebettetes Repo und wird nicht gepusht
+- `logs/` (rotierende organisms.log) ist per .gitignore ausgeschlossen
 
 ## Nach dem Push:
 
