@@ -1,0 +1,68 @@
+
+version: '3.8'
+
+services:
+  organism:
+    build: .
+    container_name: organic_ai_organism
+    restart: unless-stopped
+    volumes:
+      - ./fasta_inbox:/app/fasta_inbox
+      - ./memory:/app/memory
+      - ./logs:/app/logs
+      - ./09_neuro:/app/09_neuro
+      - ./11_evolution:/app/11_evolution
+    environment:
+      - ORGANISM_MODE=production
+      - NIGHTLY_HOUR=2
+      - WATCH_INTERVAL=10
+      # Für Ollama:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+    networks:
+      - organic-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: organic_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - organic-net
+    # Für GPU: uncomment
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Optional: API um Status abzufragen
+  api:
+    build: .
+    container_name: organic_api
+    command: python api_server.py
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./memory:/app/memory:ro
+      - ./fasta_inbox:/app/fasta_inbox:ro
+    networks:
+      - organic-net
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+
+networks:
+  organic-net:

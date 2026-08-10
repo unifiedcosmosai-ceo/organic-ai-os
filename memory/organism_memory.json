@@ -1,0 +1,67 @@
+{
+  "seen_files": {
+    "/mnt/data/organic_ai_platform/fasta_inbox/example_clean.fasta": {
+      "hash": "6ab1675e",
+      "size": 30,
+      "parsed_ok": true,
+      "error": "",
+      "timestamp": "2026-08-09T07:12:12.466748",
+      "atypical": {
+        "lowercase": true
+      }
+    },
+    "/mnt/data/organic_ai_platform/fasta_inbox/example_messy.fasta": {
+      "hash": "a0664956",
+      "size": 63,
+      "parsed_ok": true,
+      "error": "",
+      "timestamp": "2026-08-09T07:12:12.467111",
+      "atypical": {
+        "spaces_in_seq": true,
+        "lowercase": true,
+        "double_spaces": true,
+        "uniprot_format": true
+      }
+    },
+    "/home/loucypher/Downloads/organic-ai-os/fasta_inbox/example_messy.fasta": {
+      "hash": "a0664956",
+      "size": 63,
+      "parsed_ok": true,
+      "error": "",
+      "timestamp": "2026-08-10T23:28:15.236589",
+      "atypical": {
+        "spaces_in_seq": true,
+        "lowercase": true,
+        "double_spaces": true,
+        "uniprot_format": true
+      }
+    },
+    "/home/loucypher/Downloads/organic-ai-os/fasta_inbox/example_clean.fasta": {
+      "hash": "6ab1675e",
+      "size": 30,
+      "parsed_ok": true,
+      "error": "",
+      "timestamp": "2026-08-10T23:28:15.237607",
+      "atypical": {
+        "lowercase": true
+      }
+    },
+    "/home/loucypher/Downloads/organic-ai-os/fasta_inbox/uniprot_tricky.fasta": {
+      "hash": "ef8d609d",
+      "size": 133,
+      "parsed_ok": true,
+      "error": "",
+      "timestamp": "2026-08-10T23:28:15.241420",
+      "atypical": {
+        "spaces_in_seq": true,
+        "lowercase": true,
+        "double_spaces": true,
+        "uniprot_format": true
+      }
+    }
+  },
+  "failures": [],
+  "best_strands": {},
+  "prompt_history": [],
+  "evolution_count": 0
+}

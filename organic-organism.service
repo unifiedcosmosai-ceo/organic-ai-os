@@ -1,0 +1,25 @@
+
+[Unit]
+Description=Organic AI Organism - Autonomous FASTA Evolver
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/opt/organic_ai_platform
+ExecStartPre=-/usr/bin/docker compose down
+ExecStart=/usr/bin/docker compose up --build
+ExecStop=/usr/bin/docker compose down
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=organic-organism
+
+# Environment
+Environment=ORGANISM_MODE=production
+Environment=NIGHTLY_HOUR=2
+
+[Install]
+WantedBy=multi-user.target

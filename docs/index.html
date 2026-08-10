@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organic AI OS - Code as DNA</title>
+<meta name="description" content="12-Layer Organic AI OS - Code=DNA, Prompts=mRNA, LLM=Ribosome. Self-evolving FASTA parser that learns live and evolves nightly at 02:00.">
+<meta property="og:image" content="banner.png">
+<link rel="icon" href="logo.png">
+<style>
+:root { --green: #00FF88; --blue: #0088FF; --bg: #0a0e12; --card: #111a22; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background: var(--bg); color: #e6f1ff; font-family: 'JetBrains Mono', monospace; line-height:1.6; }
+.hero { min-height:90vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem; position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:0; left:0; right:0; bottom:0; background:url('banner.png') center/cover; opacity:0.15; z-index:-1; }
+.logo { width:180px; height:180px; border-radius:50%; border:3px solid var(--green); box-shadow:0 0 40px rgba(0,255,136,0.4); margin-bottom:2rem; }
+h1 { font-size:4rem; background: linear-gradient(90deg, var(--green), var(--blue)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing: -2px; }
+.subtitle { font-size:1.2rem; color: var(--green); margin:1rem 0; }
+.tagline { max-width:700px; opacity:0.8; margin:1rem auto; }
+.cta { display:flex; gap:1rem; margin:2rem 0; flex-wrap:wrap; justify-content:center; }
+.btn { padding:0.8rem 1.6rem; border-radius:8px; text-decoration:none; font-weight:bold; transition:all 0.2s; }
+.btn-primary { background: var(--green); color: #000; }
+.btn-secondary { border:1px solid var(--blue); color: var(--blue); }
+.btn:hover { transform:translateY(-2px); box-shadow:0 5px 20px rgba(0,255,136,0.3); }
+.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:1.5rem; max-width:1200px; margin:4rem auto; padding:0 2rem; }
+.card { background: var(--card); border:1px solid #1e2d3d; border-radius:12px; padding:1.5rem; transition:all 0.2s; }
+.card:hover { border-color: var(--green); transform:translateY(-3px); }
+.card h3 { color: var(--green); margin-bottom:0.5rem; }
+.layers { max-width:900px; margin:4rem auto; padding:0 2rem; }
+.layer { display:flex; gap:1rem; padding:1rem; border-left:3px solid var(--blue); margin:0.5rem 0; background:rgba(0,136,255,0.05); }
+.layer.evolvable { border-left-color: var(--green); background:rgba(0,255,136,0.08); }
+.footer { text-align:center; padding:3rem; opacity:0.5; border-top:1px solid #1e2d3d; margin-top:4rem; }
+code { background:#0f1a23; padding:0.2rem 0.5rem; border-radius:4px; color:var(--green); }
+pre { background:#0f1a23; padding:1rem; border-radius:8px; overflow:auto; margin:1rem 0; border:1px solid #1e2d3d; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <img src="logo.png" class="logo" alt="Organic AI OS Logo">
+  <h1>ORGANIC AI OS</h1>
+  <div class="subtitle">Code = DNA | Prompts = mRNA | LLM = Ribosome</div>
+  <p class="tagline">A 12-layer self-evolving AI platform for bioinformatics. The FASTA parser watches your data live and evolves itself nightly at 02:00 via LLM mutation.</p>
+  <div class="cta">
+    <a href="https://github.com/oghighzenberg1982/organic-ai-os" class="btn btn-primary">⭐ GitHub</a>
+    <a href="https://github.com/oghighzenberg1982/organic-ai-os#quickstart" class="btn btn-secondary">Quickstart 30s</a>
+    <a href="#demo" class="btn btn-secondary">Live Demo</a>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>👁️ Live Watcher</h3>
+    <p>Watches <code>fasta_inbox/</code> every 10s. Detects spaces, lowercase, Uniprot format. Emergency heal in milliseconds.</p>
+  </div>
+  <div class="card">
+    <h3>🌙 Nightly Evolution 02:00</h3>
+    <p>Builds tests from real failures. 8 parsers compete, 10 generations. Only if better → replaces best_parser.py</p>
+  </div>
+  <div class="card">
+    <h3>🧠 Prompt Co-Evolution</h3>
+    <p>Layer 09 Neuro evolves prompts. Shorter + better. Fitness = code_fitness / tokens. Example: 0.45 → 1.10</p>
+  </div>
+  <div class="card">
+    <h3>🧬 12 Layers as Cell</h3>
+    <p>Genom, Proteom, Membran, Immunsystem, Neuro, Evolution, Phänotyp - organic code principles.</p>
+  </div>
+  <div class="card">
+    <h3>🐳 Docker Ready</h3>
+    <p><code>docker compose up -d</code> → organism + ollama (codellama:7b) + API. 30 seconds to alive.</p>
+  </div>
+  <div class="card">
+    <h3>📈 Fitness 0.649 → 1.199</h3>
+    <p>Real evolution run: Adam weak parser evolved to regex + upper + generator + robust in 3 generations.</p>
+  </div>
+</div>
+
+<div class="layers" id="arch">
+  <h2 style="color:var(--green); margin-bottom:1rem;">🏗️ 12 Layer Architecture</h2>
+  <div class="layer">12 PHÄNOTYP - UI / API (FastAPI)</div>
+  <div class="layer evolvable">11 EVOLUTION - LLM Mutator (point/insert/delete/crossover) ★</div>
+  <div class="layer">10 SYMBIOM - Multi-Agent Colony</div>
+  <div class="layer evolvable">09 NEURO - Prompt Cortex (role/cot/fewshot) ★</div>
+  <div class="layer">08 IMMUNSYSTEM - Auto-Heal try/except</div>
+  <div class="layer">07 MITOCHONDRIUM - Compute Queue</div>
+  <div class="layer">06 MEMBRAN - API Boundary</div>
+  <div class="layer">05 EPIGENOM - Methylation / Regulation</div>
+  <div class="layer">04 METABOLOM - Memory shelve</div>
+  <div class="layer evolvable">03 PROTEOM - Worker Proteins (parse_fasta) ★</div>
+  <div class="layer">02 TRANSKRIPTOM - AST → Exec</div>
+  <div class="layer">01 GENOM - Code as DNA String</div>
+  <p style="margin-top:1rem; opacity:0.6;">★ = self-evolvable via Layer 11</p>
+</div>
+
+<div style="max-width:900px; margin:4rem auto; padding:0 2rem;" id="demo">
+  <h2 style="color:var(--green);">⚡ Quickstart</h2>
+<pre><code>git clone https://github.com/oghighzenberg1982/organic-ai-os.git
+cd organic-ai-os
+docker compose up --build -d
+docker exec organic_ollama ollama pull codellama:7b
+cp *.fasta ./fasta_inbox/
+docker logs -f organic_ai_organism
+# 👁️  SCAN ... ✅ 2 records
+# 🌙 EVOLUTION ... 🏆 WINNER Fit=1.19
+</code></pre>
+
+  <h2 style="color:var(--green); margin-top:3rem;">🧪 API</h2>
+<pre><code>curl http://localhost:8000/memory | jq
+curl http://localhost:8000/best_parser | jq -r .code > my_parser.py
+</code></pre>
+</div>
+
+<div class="footer">
+  <p>Built with 🧬 by <a href="https://github.com/oghighzenberg1982" style="color:var(--green)">Matthias Alexander Böhm</a></p>
+  <p>MIT License - Let code live. | Inspired by Bioinformatics Programming Using Python (O'Reilly)</p>
+  <p style="margin-top:1rem;"><a href="https://github.com/oghighzenberg1982/organic-ai-os" style="color:var(--blue)">GitHub</a> • <a href="https://github.com/oghighzenberg1982/organic-ai-os/blob/main/MANUAL.md" style="color:var(--blue)">Manual</a> • <a href="https://github.com/oghighzenberg1982/organic-ai-os/blob/main/DOCS.md" style="color:var(--blue)">Docs</a></p>
+</div>
+
+</body>
+</html>

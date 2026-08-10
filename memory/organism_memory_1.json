@@ -1,0 +1,37 @@
+{
+  "seen_files": {
+    "/mnt/data/organic_ai_platform/fasta_inbox/example_clean.fasta": {
+      "hash": "6ab1675e",
+      "size": 30,
+      "parsed_ok": true,
+      "error": "",
+      "timestamp": "2026-08-09T07:12:38.657508",
+      "atypical": {
+        "lowercase": true
+      }
+    },
+    "/mnt/data/organic_ai_platform/fasta_inbox/example_messy.fasta": {
+      "hash": "a0664956",
+      "size": 63,
+      "parsed_ok": true,
+      "error": "",
+      "timestamp": "2026-08-09T07:12:38.658049",
+      "atypical": {
+        "spaces_in_seq": true,
+        "lowercase": true,
+        "double_spaces": true,
+        "uniprot_format": true
+      }
+    }
+  },
+  "failures": [],
+  "best_strands": {
+    "gen_0": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "time": "2026-08-09T07:12:38.672407"
+    }
+  },
+  "prompt_history": [],
+  "evolution_count": 1
+}

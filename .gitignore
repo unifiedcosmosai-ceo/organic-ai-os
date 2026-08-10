@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Runtime logs
+logs/
+
+# Local env
+.env
+*.local
+
+# OS
+.DS_Store
+Thumbs.db

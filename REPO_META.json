@@ -1,0 +1,26 @@
+{
+  "name": "organic-ai-os",
+  "description": "\ud83e\uddec 12-Layer Organic AI OS - Code=DNA, Prompts=mRNA, LLM=Ribosome. Self-evolving FASTA parser that learns live from your data and evolves nightly at 02:00 via LLM mutation.",
+  "topics": [
+    "bioinformatics",
+    "ai",
+    "evolution",
+    "llm",
+    "self-evolving-code",
+    "fasta",
+    "python",
+    "organic-code",
+    "ollama",
+    "codellama",
+    "genetic-algorithm",
+    "autonomous-agent",
+    "bio-inspired"
+  ],
+  "website": "",
+  "badges": [
+    "https://img.shields.io/badge/Bio-Inspired-Organic%20Code-brightgreen?style=for-the-badge",
+    "https://img.shields.io/badge/python-3.11+-blue.svg",
+    "https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white",
+    "https://img.shields.io/badge/license-MIT-green"
+  ]
+}
