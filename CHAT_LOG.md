@@ -334,3 +334,22 @@ Inspiriert von: Bioinformatics Programming Using Python (O'Reilly) - Kapitel 3 C
 GET /health → {"status":"ok","uptime_s":..., "inbox_files":4}
 POST /parse (FASTQ) → {"format":"fastq","records":1, ...}
 ```
+
+## 12. User (v4 Phase D): Symbiom Swarm, Co-Evolution & Reporter
+
+**Assistant:**
+- **D1 Layer 10 (`10_symbiom/symbiom_swarm.py`)**: Schwarm aus 4 Spezialisten-Nischen (robust/fast/compact/strict), Knowledge-Sharing, eigene Hall of Fame
+  - Bugfix: `exec(code, {}, ns)` → `exec(code, ns, ns)` (Modulebene-import sichtbar)
+  - Bugfix: robust-Mutat ohne `import re`; strict-Mutat erzeugte SyntaxError (continue außerhalb loop)
+- **D2 Co-Evolution (Layer 09<->10)**: `co_evolution.py` koppelt NeuroCortex-Prompts mit Code-Schwarm
+- **D3 Reporter (Layer 12)**: `12_phenotype/reporter.py` → `reports/report.json` + `reports/report.html`
+- **CLI**: `app.py coevolve`, `app.py report`
+- **Tests**: 24 gesamt (5 neue Schwarm/Co-Evolution)
+
+### Demonstriert
+```
+24 passed in 0.51s
+SYMBIOM SWARM → robust_0 fit=1.000
+CO-EVOLUTION → code=robust_0 fit=1.000 | prompt=adam_engineer fit=1.000
+Report JSON/HTML generiert
+```

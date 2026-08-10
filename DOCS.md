@@ -390,3 +390,36 @@ Die `status --json`-Ausgabe wird per `contextlib.redirect_stdout` von Logger-Out
 ---
 
 *Technische Doku v1.2 - 2026-08-11 (v4 Phase C)*
+
+---
+
+## 10. v4 Phase D: Symbiom Swarm, Co-Evolution & Reporter
+
+### 10.1 `10_symbiom/symbiom_swarm.py`
+
+- `Symbiont` (name, speciality, code, fitness, discoveries)
+- `SymbiomSwarm`: population_per_species je Nische, `seed(base_code)`, `evaluate()`,
+  `_share_knowledge()` (besten Fund in den Schwarm impfen), `evolve(tests, generations)`,
+  `export_hall_of_fame()` → `memory/symbiom_hall_of_fame.json`
+- Nischen-Mutatoren: robust (import re + ws-compile), fast, compact (Leerzeilen),
+  strict (Filter via List-Comprehension)
+- Bugfix: `exec(code, ns, ns)` damit Modulebene-`import` im Funktion-Body sichtbar ist
+
+### 10.2 `10_symbiom/co_evolution.py`
+
+- `evolve(rounds, swarm_generations, pop_per_species)` → `(best_code, best_prompt, history)`
+- Prompt-Fitness = Code-Fitness*0.6 + Prompt-Qualitaet*0.4
+- Prompt-Hint wird in den Schwarm-Code eingewoben (Inspiration)
+
+### 10.3 `12_phenotype/reporter.py`
+
+- `collect_day_data()`: Memory + Hall of Fame + Symbiom-Pool
+- `generate_report()`: `reports/report.json` (maschinell) + `reports/report.html` (self-contained, KPI-Kacheln)
+
+### 10.4 CLI Integration
+
+`python app.py coevolve --rounds N --swarm-gen M [--save]`, `python app.py report`
+
+---
+
+*Technische Doku v1.3 - 2026-08-11 (v4 Phase D)*

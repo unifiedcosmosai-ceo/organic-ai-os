@@ -278,3 +278,28 @@ curl -X POST localhost:8000/parse -H 'Content-Type: application/json' \
 python3 -m pytest tests/ -v     # oder
 make test
 ```
+
+---
+
+## 10. Symbiom Schwarm & Co-Evolution (Phase D)
+
+### Symbiom Schwarm
+```bash
+python -m 10_symbiom.symbiom_swarm
+```
+4 Spezialisten-Nischen (robust/fast/compact/strict) evolvieren parallel;
+der Koordinator teilt Erkenntnisse (Knowledge-Sharing) und speichert
+`memory/symbiom_hall_of_fame.json`.
+
+### Co-Evolution (Prompt <-> Code)
+```bash
+python app.py coevolve --rounds 3 --swarm-gen 6 --save
+```
+Der Neuro-Cortex (Layer 09) evolviert Prompts, die Code erzeugen; der Schwarm
+(Layer 10) optimiert den Code, dessen Fitness wiederum die Prompts bewertet.
+
+### Reporter
+```bash
+python app.py report
+# erzeugt reports/report.json + reports/report.html
+```

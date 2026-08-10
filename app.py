@@ -9,6 +9,8 @@ Vereint alle Layer des Projekts in einem Einstiegspunkt:
   - bio_formats.py                Layer 03   Multi-Format Parser (FASTA/FASTQ)
   - config.py                     Layer 05   Konfiguration (Defaults/env/organic.toml)
   - api_server.py                 Layer 12   FastAPI Status/API
+  - 10_symbiom/                   Layer 09/10 Symbiom Schwarm + Co-Evolution
+  - 12_phenotype/reporter.py      Layer 12   Tagesreport (JSON + HTML)
 
 CLI-Subcommands:
   python app.py watch                Watcher + naechtliche Evolution + API (Threads)
@@ -16,6 +18,8 @@ CLI-Subcommands:
   python app.py parse <file>         Datei parsen (Auto-Detection FASTA/FASTQ)
   python app.py evolve-now           Evolution sofort triggern
   python app.py status               Statusreport aus Memory/Hall of Fame
+  python app.py coevolve             Prompt<->Code Co-Evolution starten
+  python app.py report               Tagesreport erzeugen (JSON + HTML)
   python app.py demo                 Code-Evolutions-Demo
   python app.py neuro-demo           Prompt-Evolutions-Demo
 """
@@ -133,6 +137,32 @@ def cmd_evolve_now(args):
             print(hof_path.read_text()[:800])
 
 
+def cmd_coevolve(args):
+    """Startet die Prompt<->Code Co-Evolution (Layer 09/10)."""
+    import importlib
+    import json
+
+    coevo = importlib.import_module("10_symbiom.co_evolution")
+    code, prompt, hist = coevo.evolve(rounds=args.rounds, swarm_generations=args.swarm_gen)
+    print("\n✅ CO-EVOLUTION FERTIG")
+    print(f"Bester Code: {code.name} fit={code.fitness:.3f}")
+    print(f"Bester Prompt: {prompt.name} fit={prompt.fitness:.3f}")
+    if args.save:
+        out = Path("memory") / "coevolution_report.json"
+        out.write_text(json.dumps(hist, indent=2, ensure_ascii=False))
+        print(f"Report: {out}")
+
+
+def cmd_report(args):
+    """Erzeugt den Tagesreport (JSON + HTML)."""
+    import importlib
+
+    reporter = importlib.import_module("12_phenotype.reporter")
+    jp, hp = reporter.generate_report()
+    print(f"Report JSON: {jp}")
+    print(f"Report HTML: {hp}")
+
+
 def run_organism(port: int = 8000):
     """Startet Watcher + naechtliche Evolution + API parallel."""
     import autonomous_organism as ao
@@ -177,6 +207,13 @@ def main():
     evolve_p = sub.add_parser("evolve-now", help="Evolution sofort triggern")
     evolve_p.add_argument("--show-hof", action="store_true", help="Hall of Fame anzeigen")
 
+    coev_p = sub.add_parser("coevolve", help="Prompt<->Code Co-Evolution starten")
+    coev_p.add_argument("--rounds", type=int, default=3, help="Co-Evolutions-Runden")
+    coev_p.add_argument("--swarm-gen", type=int, default=6, help="Schwarm-Generationen pro Runde")
+    coev_p.add_argument("--save", action="store_true", help="Report nach memory/coevolution_report.json")
+
+    sub.add_parser("report", help="Tagesreport erzeugen (JSON + HTML)")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -189,6 +226,10 @@ def main():
         cmd_stats(args)
     elif args.command == "evolve-now":
         cmd_evolve_now(args)
+    elif args.command == "coevolve":
+        cmd_coevolve(args)
+    elif args.command == "report":
+        cmd_report(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app
