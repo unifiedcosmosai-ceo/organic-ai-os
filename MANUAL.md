@@ -321,9 +321,45 @@ m = LLMMutator("ollama")   # lazy import: crasht NICHT ohne ollama-Paket
 ### Regressions-Suite
 
 ```bash
-make test                 # 37 Tests (alle Layer + Einstiegspunkte)
+make test                 # 47 Tests (alle Layer + Einstiegspunkte)
 make test-regression      # nur Einstiegspunkte (schnell, ~1s)
 ```
 
 Die Suite startet `organic_ai_os_evolving*.py`, CLI-Subcommands, API und
 LLM-Provider und sammelt jeden Traceback als fehlgeschlagenen Test.
+
+## 12. MCTS-Evolutions-Kern (v5)
+
+### Was ist neu?
+
+Ein **Monte-Carlo-Tree-Search (MCTS)** ersetzt das reine GA-Tournament als
+Such-Kern der Evolution (Forschung 2026: BEAM, ARIADNE, AdverMCTS, RPM):
+
+- **Bi-level Evolution**: aeusserer Layer waehlt Struktur-Operatoren
+  (Alle MUTATION_PROMPTS), innerer Layer sucht funktional mit MCTS.
+- **UCB1 Selection**: Exploration/Exploitation-Ausgleich in O(log n).
+- **Process-Reward Backprop**: Rollout-Fitness wird mit Tiefe diskontiert
+  (0.9^depth) - naehere/bestaetigte Zuege wiegen mehr.
+- **Adversarial-Testbank (AdverMCTS-light)**: verteidigt gegen
+  Pseudo-Correctness durch versteckte Grenzfaelle:
+  - mehrere Blankzeilen in FASTA (`_t_embedded_newline`)
+  - doppelte Header (`_t_duplicate_headers`)
+  - Nur-Kleinbuchstaben-Sequenzen (`_t_lowercase_only`)
+
+### CLI
+
+```bash
+python app.py mcts-evolve --iterations 150 --tests adversarial
+python app.py mcts-evolve --iterations 100 --tests base
+python app.py mcts-evolve --seed-code /pfad/zu/start.py
+```
+
+Der Champion wird nach Fitness + Bestaetigungs-Zahl (visits) gewaehlt -
+anti-Pseudo-Correctness.
+
+### Tests
+
+```bash
+python -m pytest tests/test_mcts_evolver.py -v   # 10 Tests
+make test                                        # 47 Tests (alle Layer)
+```

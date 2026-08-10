@@ -111,6 +111,17 @@ make test                 # Unit- + Regressions-Tests (37 pass)
 make test-regression      # nur die schnelle Regressions-Suite
 ```
 
+### v5 Phase 1 (MCTS-Evolutions-Kern)
+
+- **🌳 MCTS-Suchkern** — `11_evolution/mcts_evolver.py`: Monte-Carlo-Tree-Search statt reinem GA-Tournament (UCB1-Selection, Process-Reward-Backprop, Bi-level wie BEAM)
+- **🛡️ Adversarial-Testbank** — AdverMCTS-light: versteckte Grenzfaelle (Blankzeilen, Duplikat-Header, lowercase) verhindern Pseudo-Correctness
+- **🚀 CLI** — `python app.py mcts-evolve --iterations N [--tests base|adversarial]`
+
+```bash
+python app.py mcts-evolve --iterations 150 --tests adversarial
+make test      # 47 Tests (37 v4 + 10 v5)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat

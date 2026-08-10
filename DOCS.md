@@ -450,3 +450,38 @@ Die `status --json`-Ausgabe wird per `contextlib.redirect_stdout` von Logger-Out
 - `.github/workflows/ci.yml`: compileall → Regressions-Suite → Coverage
 - `make all` / `make test` / `make test-regression` / `make report`
 - `tests/conftest.py`: zentrales sys.path-Setup (keine Boilerplate je Datei)
+
+---
+
+## 12. v5 Phase 1: MCTS-Evolutions-Kern
+
+### 12.1 `11_evolution/mcts_evolver.py`
+
+Bi-level GA+MCTS (Forschung 2026: BEAM, ARIADNE, AdverMCTS, RPM):
+
+| Klasse/Funktion | Verantwortung |
+|---|---|
+| `MCTNode` | Suchbaum-Knoten; UCB1 über `value/visits + c·√(ln(parent)/visits)` |
+| `MCTSEvolution.selection/expansion` | UCB1-Descent; Fächerauf je Strategie (alle MUTATION_PROMPTS) |
+| `MCTSEvolution.simulation` | Rollout: vollständige Fitnessbewertung |
+| `MCTSEvolution.backpropagation` | Process-Reward: `value += reward·0.9^depth` |
+| `MCTSEvolution.run_mcts` | Iterationen mit Fokus-Zufallsauswahl; Terminal-Check bei fit≥0.95 |
+| `_best_confirmed` | anti-Pseudo-Correctness: Fitness + visits + −depth |
+| `adversarial_tests` | AdverMCTS-light: +3 Grenzfall-Tests (Blankzeilen, Duplikat-Header, lowercase) |
+| `BizFitness` | Korrektheit + Kompaktheits-Prämie, ohne FitnessEvaluator-Abhängigkeit |
+
+### 12.2 CLI
+
+`python app.py mcts-evolve --iterations N --tests base|adversarial [--seed-code PATH]`
+
+Champion-Auswahl gewichtet bestätigte Züge (visits) - keine Pseudo-Correctness.
+
+### 12.3 Testabdeckung
+
+- `tests/test_mcts_evolver.py`: 10 Tests (UCB1, best_child, Fitness-Runge,
+  Adversarial-Deckung, BizFitness)
+- Gesamtstand: `make test` → **47 Tests** (37 v4 + 10 v5)
+
+---
+
+*Technische Doku v1.4 - 2026-08-11 (v5 Phase 1: MCTS-Evolutions-Kern)*

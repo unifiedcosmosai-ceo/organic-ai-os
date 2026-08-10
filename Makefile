@@ -1,4 +1,4 @@
-.PHONY: all test test-api test-regression coverage run parse evolve-now report clean
+.PHONY: all test test-api test-regression test-mcts coverage run parse evolve-now report clean
 
 # Automatische Unit- + Regressions-Tests (CI-Einstieg)
 all: test
@@ -10,6 +10,10 @@ test:
 # Nur die Regressions-Suite (schnell)
 test-regression:
 	python3 -m pytest tests/test_regression.py -v
+
+# Nur die MCTS-Suite (v5)
+test-mcts:
+	python3 -m pytest tests/test_mcts_evolver.py -v
 
 # Nur API-Tests
 test-api:
