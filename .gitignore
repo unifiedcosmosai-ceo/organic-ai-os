@@ -22,3 +22,6 @@ memory/*.json.tmp
 Thumbs.db
 # Embedded repo (separate project)
 kali-linux-docker/
+
+# Laufzeit-Reporte (generiert)
+reports/
