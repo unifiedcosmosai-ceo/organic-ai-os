@@ -21,11 +21,13 @@ logger = get_logger("organism")
 import sys
 sys.path.insert(0, str(Path(__file__).parent / "11_evolution"))
 sys.path.insert(0, str(Path(__file__).parent / "09_neuro"))
+from organics_log import get_logger
+logger = get_logger("organism")
 try:
     from llm_evolver import Strand, FitnessEvaluator, LLMMutator, EvolutionEngine
-    print("✅ Evolution Engine geladen")
+    logger.info("Evolution Engine geladen")
 except Exception as e:
-    print(f"Fallback Evolution Engine: {e}")
+    logger.warning("Fallback Evolution Engine: %s", e)
     @dataclass
     class Strand:
         name: str; code: str; fitness: float=0.0; generation: int=0; lineage: List[str]=field(default_factory=list); metadata: Dict=field(default_factory=dict)

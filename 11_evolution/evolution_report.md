@@ -20,3 +20,11 @@ Lineage: weak -> Gen1 -> Gen2 -> Gen3
 - Lineage-Tracking pro Strand in memory/best_strands
 - Neuer Report-Ausgang: memory/hall_of_fame.json
 - Structured Evolution-Events in logs/organism.log
+
+## v4 Update (Phase B)
+
+- Multi-Format Parser (bio_formats.py): FASTA + FASTQ Auto-Detection
+  - Nachweis: example_small.fastq → 2 Records (seq + qual korrekt)
+  - example_clean.fasta → 2 Records; uniprot_tricky.fasta → 2 Records
+  - Aktueller Champion (best_parser.py / nightly_adam, Fitness 1.0) weiterhin aktiv
+- CLI `evolve-now` kann Evolution jederzeit manuell triggern

@@ -239,6 +239,27 @@ EVENTS RECEIVED: [('live_event.fasta', 'created'), ('live_event.fasta', 'modifie
 
 ---
 
+## 10. User (v4 Phase B): Multi-Format-Parser, Konfiguration & CLI
+
+**Assistant:**
+- **B5 Multi-Format Parser** (`bio_formats.py`): Auto-Detection FASTA/FASTQ, `parse_file()` liefert `(format, records)`
+  - Bugfix: `exec(code, {}, ns)` → `exec(code, ns, ns)` (Namespaces)
+  - Bugfix: FASTQ `qual` wurde als Liste statt String zurückgegeben → `"".join(qual)`
+- **B6 Konfiguration** (`config.py`): Priorität *Defaults < `ORGANIC_*` env < `organic.toml`*, minimaler dependency-freier TOML-Parser
+- **B6 CLI** (`app.py`): Subcommands `watch` / `serve` / `parse` / `evolve-now` / `status` (mit `--json`) / `demo` / `neuro-demo`
+  - `status --json` von Logger-Output entkoppelt (redirect_stdout)
+- **Docs**: README (Phase B Sektion), MANUAL §7, DOCS §8, CHAT_LOG
+- **Branching**: `v4/phase-b` auf `v4/phase-a` rebased (Phase A-Files fehlten auf baseline-basiertem Branch)
+
+### Demonstriert
+```
+Format: fastq | Records: 2   (example_small.fastq)
+Format: fasta | Records: 2   (uniprot_tricky.fasta)
+status --json → {"evolution_count": ..., "files_seen": ..., "hall_of_fame": [...]}
+```
+
+---
+
 ## Dateien Übersicht
 
 ```

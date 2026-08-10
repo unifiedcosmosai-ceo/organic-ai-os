@@ -1,0 +1,17 @@
+# Organic AI OS - Konfiguration
+# Prioritaet: Defaults < Umgebungsvariablen (ORGANIC_*) < diese Datei
+# Beispielwerte - fuehlen Sie sich frei anzupassen.
+
+watch_interval = 2.0
+nightly_interval = 120.0
+port = 8000
+
+population_size = 8
+generations = 10
+hall_of_fame_size = 5
+
+# LLM Mutation: "fallback" (lokal) oder "ollama"
+llm_provider = "fallback"
+ollama_host = "http://localhost:11434"
+ollama_model = "codellama:7b"
+llm_timeout = 30

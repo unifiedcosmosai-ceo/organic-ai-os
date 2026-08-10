@@ -323,3 +323,43 @@ Ersetze `parse_fasta` durch `parse_gff`, `parse_vcf`, etc. - Tests anpassen, Res
 ---
 
 *Technische Doku v1.0 - 2026-08-09*
+
+---
+
+## 8. v4 Phase B: Multi-Format Parser, Config & CLI
+
+### 8.1 `bio_formats.py` — Multi-Format Parser
+
+- `FORMATS`: `fasta`, `fastq`
+- `detect_format(content)` → Format-Name (Heuristik: `>`, `@`-Header)
+- `parse_file(content)` → `(format, records)`; FASTQ liefert `{header: {"seq": ..., "qual": ...}}`
+- Seeds werden per `exec` isoliert in einem eigenen Namespace ausgeführt (Bugfix: `exec(code, ns, ns)` statt `exec(code, {}, ns)`; FASTQ-`qual` wird als String gejoint)
+
+```python
+import bio_formats
+fmt, rec = bio_formats.parse_file(open("x.fastq").read())
+```
+
+### 8.2 `config.py` — Konfigurations-Layer
+
+Priorität: **Defaults < `ORGANIC_*` env < `organic.toml`**
+
+- `DEFAULTS`: watch_dir, memory_dir, logs_dir, port, intervals, population/generation/hoF-Größe, LLM-Provider, Ollama-Host/Model, Timeout
+- `load_config()` behandelt bool/int/float-Ena und liest `organic.toml` mit einem minimalen, dependency-freien TOML-Parser
+
+### 8.3 `app.py` CLI
+
+| Subcommand | Funktion |
+|---|---|
+| `watch` | Watcher + nächtliche Evolution + API (default) |
+| `serve --port` | nur FastAPI |
+| `parse <file>` | FASTA/FASTQ Auto-Detection |
+| `evolve-now` | Evolution sofort ausführen |
+| `status --json` | Memory + Hall of Fame als Report |
+| `demo` / `neuro-demo` | Evolutions-Demos |
+
+Die `status --json`-Ausgabe wird per `contextlib.redirect_stdout` von Logger-Output entkoppelt.
+
+---
+
+*Technische Doku v1.1 - 2026-08-11 (v4 Phase B)*
