@@ -219,6 +219,26 @@ sudo systemctl status organic-organism.service
 
 ---
 
+## 9. User (v4): Optimierungen, Erweiterungen, Upgrades, Erfindungen - Phase A (Optimizations)
+
+**Assistant:**
+- Repository initialisiert (git init, main) - Baseline-Kommit v3 + Frontfehler-Fixes
+- README_1.md als Duplikat entfernt
+- **A1 Event-getriebener Watcher** (`watcher.py`): watchdog Observer, Polling-Fallback, sauberes Shutdown (SIGINT/SIGTERM)
+- **A2 Robustes Memory**: atomare JSON-Writes (tmp + os.replace), relative Pfade mit einmaliger `/mnt/data`-Migration
+- **A3 Strukturiertes Logging** (`organics_log.py`): rotierende organisms.log, BOOT/SCAN/IMMUN/EVOLUTION/ERROR Events
+  - Bugfix `emergency_heal` (war bedingt durch `or True` immer aktiv)
+  - Bugfix `detect_atypical` (Operator-Präzedenz)
+- **A4 Hall of Fame Evolution**: Top-5 Strands (`hall_of_fame.json`), Diversity-Guard gegen redundanten Code, Lineage-Tracking
+
+### Demonstriert
+```
+EVENTS RECEIVED: [('live_event.fasta', 'created'), ('live_event.fasta', 'modified')]
+🏆 HOF: 5 Einträge, top: nightly_adam fit=1.0
+```
+
+---
+
 ## Dateien Übersicht
 
 ```

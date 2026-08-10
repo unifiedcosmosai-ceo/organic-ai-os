@@ -11,8 +11,8 @@
 ## 1. Schnellstart für Ungeduldige
 
 ```bash
-# 1. Repo klonen (oder Ordner kopieren)
-cd /mnt/data/organic_ai_platform
+# 1. Ins Repo wechseln (oder Ordner kopieren)
+cd organic-ai-os
 
 # 2. Starten
 docker compose up --build -d
@@ -74,7 +74,7 @@ curl http://localhost:8000/best_parser | jq -r .code > my_parser.py
 
 ### 3.1 Was passiert wenn ich ein File reinlege?
 
-1. **Innerhalb 10 Sekunden:** Watcher scannt Ordner
+1. **Innerhalb ~1 Sekunde (event-getrieben):** watchdog meldet das neue File
 2. **Versucht zu parsen** mit aktuellem besten Parser
 3. **Wenn ok:** Merkt sich File (Hash, Size, parsed_ok=true)
 4. **Wenn Fehler:** 
@@ -82,6 +82,8 @@ curl http://localhost:8000/best_parser | jq -r .code > my_parser.py
    - **Sofortige Heilung:** Fügt strip(), upper(), re.sub hinzu
    - Testet Heilung sofort
    - Wenn erfolgreich: ersetzt best_parser.py sofort
+
+> Falls `watchdog` nicht installiert ist, wechselt der Organismus automatisch auf Polling-Interval (alle 2s).
 
 **Beispiel:**
 ```bash
