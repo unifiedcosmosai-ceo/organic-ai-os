@@ -88,17 +88,24 @@ class LLMMutator:
     
     def __init__(self, llm_provider="fallback"):
         self.provider = llm_provider
-        # Für echten Einsatz: hier Client initialisieren
-        # self.client = OpenAI() oder ollama.Client()
-    
+        self._ollama = None
+        if self.provider == "ollama":
+            try:
+                from ollama_integration import OllamaMutator
+                self._ollama = OllamaMutator()
+            except (ImportError, ConnectionError) as e:
+                self.provider = "fallback"
+
     def _call_llm(self, system: str, user: str) -> str:
-        """Hier LLM call - aktuell simuliert mit intelligentem Fallback"""
+        """LLM call: Ollama wenn verfuegbar, sonst intelligenter AST-Fallback."""
+        if self.provider == "ollama" and self._ollama is not None:
+            try:
+                return self._ollama.mutate(user, system)
+            except ConnectionError as e:
+                self.provider = "fallback"
+                return self._fallback_mutate(system, user)
         if self.provider == "fallback":
             return self._fallback_mutate(system, user)
-        elif self.provider == "ollama":
-            # import ollama; return ollama.chat(...)
-            pass
-        # ... openai etc.
         return user.split("```python")[-1].split("```")[0] if "```" in user else user
     
     def _fallback_mutate(self, instruction: str, code_context: str) -> str:

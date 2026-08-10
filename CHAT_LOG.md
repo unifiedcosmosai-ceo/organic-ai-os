@@ -353,3 +353,20 @@ SYMBIOM SWARM → robust_0 fit=1.000
 CO-EVOLUTION → code=robust_0 fit=1.000 | prompt=adam_engineer fit=1.000
 Report JSON/HTML generiert
 ```
+
+## 13. User (v4 Finale): Ollama-Anbindung, Regression, CI & Refactoring
+
+**Assistant:**
+- **Fix Verbindungsfehler**: `ollama_integration.py` hatte hartes `import ollama` (Crash ohne Paket) → lazy import + clear ConnectionError
+- **Verdrahtung**: `LLMMutator("ollama")` ruft jetzt `OllamaMutator`; Fallback bei fehlendem Ollama (kein `pass`-Stub mehr)
+- **Automatische Regressions-Suite** (`tests/test_regression.py`, 13 Tests): startet alle `organic_ai_os_evolving*.py`, CLI, API, LLM-Provider
+- **CI**: `.github/workflows/ci.yml` (compileall + Regression + Coverage), `make all`/`test-regression`
+- **Refactoring**: `tests/conftest.py` bündelt sys.path; Makefile erweitert (`report`, `test-regression`, `all`)
+- **Tests gesamt**: 37 passed
+
+### Demonstriert
+```
+37 passed in 1.08s
+make all    → 37 passed
+LLMMutator("ollama") ohne ollama → stdout, kein Traceback
+```

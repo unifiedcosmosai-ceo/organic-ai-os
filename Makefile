@@ -1,8 +1,15 @@
-.PHONY: test test-api coverage run make-migrate demo clean
+.PHONY: all test test-api test-regression coverage run parse evolve-now report clean
 
-# Lokale Tests: pytest
+# Automatische Unit- + Regressions-Tests (CI-Einstieg)
+all: test
+
+# Lokale Tests: pytest (inkl. Regressions-Suite)
 test:
 	python3 -m pytest tests/ -v
+
+# Nur die Regressions-Suite (schnell)
+test-regression:
+	python3 -m pytest tests/test_regression.py -v
 
 # Nur API-Tests
 test-api:
@@ -23,6 +30,10 @@ parse:
 # Evolution sofort triggern
 evolve-now:
 	python3 app.py evolve-now
+
+# Tagesreport erzeugen
+report:
+	python3 app.py report
 
 # PyCache aufräumen
 clean:

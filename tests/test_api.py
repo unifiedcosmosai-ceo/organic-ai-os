@@ -1,10 +1,5 @@
 """Tests für die API v2 Endpoints (FastAPI TestClient)."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 from fastapi.testclient import TestClient
 
 from api_server import app

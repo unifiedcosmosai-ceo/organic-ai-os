@@ -303,3 +303,27 @@ Der Neuro-Cortex (Layer 09) evolviert Prompts, die Code erzeugen; der Schwarm
 python app.py report
 # erzeugt reports/report.json + reports/report.html
 ```
+
+---
+
+## 11. Ollama-Anbindung & Regression (v4 Finale)
+
+### LLM-Provider korrekt verdrahten
+
+```python
+from llm_evolver import LLMMutator
+m = LLMMutator("ollama")   # lazy import: crasht NICHT ohne ollama-Paket
+```
+
+- Ohne `pip install ollama` → automatischer Fallback auf AST-Mutation
+- Ohne laufendes `ollama run` → gleicher Fallback (klare ConnectionError-Meldung intern)
+
+### Regressions-Suite
+
+```bash
+make test                 # 37 Tests (alle Layer + Einstiegspunkte)
+make test-regression      # nur Einstiegspunkte (schnell, ~1s)
+```
+
+Die Suite startet `organic_ai_os_evolving*.py`, CLI-Subcommands, API und
+LLM-Provider und sammelt jeden Traceback als fehlgeschlagenen Test.

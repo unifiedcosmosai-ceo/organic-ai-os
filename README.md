@@ -99,6 +99,18 @@ python app.py report                       # Tagesreport (JSON + HTML)
 # → reports/report.html im Browser öffnen
 ```
 
+### v4 Finale (Ollama-Anbindung + automatische Regression)
+
+- **🔌 Tier-Ollama-Anbindung gefixt** — `LLMMutator("ollama")` nutzt jetzt `OllamaMutator` (lazy `import ollama`, kein Crash ohne Paket; bei fehlendem Ollama automatischer AST-Fallback)
+- **🧪 Automatische Regressions-Suite** — `tests/test_regression.py` startet *alle* Einstiegspunkte (`organic_ai_os_evolving*.py`, CLI, API, LLM-Provider) und fängt Verbindungs-/Refactor-Fehler
+- **⚙️ CI** — `.github/workflows/ci.yml` (compileall + Regression + Coverage), `make all` als Einstieg
+- **✂️ Refactoring** — `tests/conftest.py` entfernt doppelte `sys.path`-Boilerplate
+
+```bash
+make test                 # Unit- + Regressions-Tests (37 pass)
+make test-regression      # nur die schnelle Regressions-Suite
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat
