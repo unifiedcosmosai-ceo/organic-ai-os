@@ -86,6 +86,19 @@ curl -X POST localhost:8000/parse -H 'Content-Type: application/json' \
      -d '{"content": "@r1\nACGT\n+\nIIII\n"}'
 ```
 
+### v4 Phase D (Symbiom Swarm + Co-Evolution + Reporter)
+
+- **🐝 Symbiom Schwarm** — `10_symbiom/symbiom_swarm.py`: spezialisierte Parser-Agenten (robust/fast/compact/strict) mit Knowledge-Sharing & eigener Hall of Fame
+- **🌀 Co-Evolution** — `10_symbiom/co_evolution.py`: Neuro-Cortex-Prompts ↔ Code-Schwarm koppeln sich (Layer 09/10)
+- **📊 Reporter** — `12_phenotype/reporter.py`: Tagesreport als JSON + HTML (`reports/`)
+- **🧪 24 Tests gesamt** — inkl. Schwarm- & Co-Evolutions-Testsuite
+
+```bash
+python app.py coevolve --rounds 3 --save   # Co-Evolution starten
+python app.py report                       # Tagesreport (JSON + HTML)
+# → reports/report.html im Browser öffnen
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat
