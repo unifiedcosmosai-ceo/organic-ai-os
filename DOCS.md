@@ -363,3 +363,30 @@ Die `status --json`-Ausgabe wird per `contextlib.redirect_stdout` von Logger-Out
 ---
 
 *Technische Doku v1.1 - 2026-08-11 (v4 Phase B)*
+
+---
+
+## 9. v4 Phase C: API v2 & Testsuite
+
+### 9.1 API v2 (`api_server.py`)
+
+- `ParseRequest` Pydantic-Modell für `POST /parse`
+- Neue Endpoints: `/health`, `/parse`, `/stats`, `/lineage`, `/fitness`
+- Bestehende `/memory`, `/evolution_history`, `/inbox` beibehalten
+- `ROOT`-Pfade (`Path(__file__)`) statt CWD-relative Pfade → Start von überall
+
+### 9.2 Testsuite (`tests/`)
+
+| Datei | Deckt ab |
+|-------|----------|
+| `test_bio_formats.py` | FASTA/FASTQ Detection + Parsing inkl. messy Daten |
+| `test_config.py` | Defaults, `ORGANIC_*` env-Override, `organic.toml`, bool-Ena |
+| `test_api.py` | Alle API v2 Endpoints via `fastapi.testclient.TestClient` |
+
+### 9.3 Makefile
+
+`make test` / `make test-api` / `make coverage` / `make run` / `make parse FILE=...` / `make evolve-now` / `make clean`
+
+---
+
+*Technische Doku v1.2 - 2026-08-11 (v4 Phase C)*

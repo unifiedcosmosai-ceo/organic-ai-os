@@ -318,3 +318,19 @@ Inspiriert von: Bioinformatics Programming Using Python (O'Reilly) - Kapitel 3 C
 ---
 
 *Log generiert: 2026-08-09T07:30:42.685100*
+
+## 11. User (v4 Phase C): API v2 & Testsuite
+
+**Assistant:**
+- **C1 API v2** (`api_server.py`): Pydantic `ParseRequest`, Endpoints `/parse`, `/stats`, `/lineage`, `/fitness`, `/health`; ROOT-absolut Pfade
+  - Fix: `/parse` mit Bare-Param lieferte 422 → Pydantic-Body-Modell
+- **C2 Testsuite** (`tests/`): 19 Tests für Parser, Config, API (TestClient)
+- **C3 Makefile**: `test`, `test-api`, `coverage`, `run`, `parse`, `evolve-now`, `clean`; `requirements-dev.txt`
+- **Docs**: README (Phase C), MANUAL §8/§9, DOCS §9, CHAT_LOG
+
+### Demonstriert
+```
+19 passed in 0.53s
+GET /health → {"status":"ok","uptime_s":..., "inbox_files":4}
+POST /parse (FASTQ) → {"format":"fastq","records":1, ...}
+```

@@ -250,3 +250,31 @@ Alle unterstützten Schlüssel stehen kommentiert in `organic.toml`.
 
 `fasta_inbox/` enthält neben FASTA-Dateien nun auch `example_small.fastq`
 zum Testen des Multi-Format-Parsers.
+
+---
+
+## 8. API v2 Endpoints (Phase C)
+
+| Method | Endpoint | Funktion |
+|--------|----------|----------|
+| GET | `/health` | Healthcheck inkl. Uptime |
+| POST | `/parse` | Sequenzen parsen (FASTA/FASTQ Auto-Detection, JSON-Body) |
+| GET | `/stats` | Memory zahlen + Hall of Fame |
+| GET | `/lineage` | Best-Strand-Ahnenreihe |
+| GET | `/fitness` | Fitness-Historie |
+| GET | `/memory` | Roh-Memory |
+| GET | `/evolution_history` | Evolution-Generationen |
+| GET | `/inbox` | Dateien im Watch-Ordner |
+
+Beispiel:
+```bash
+curl -X POST localhost:8000/parse -H 'Content-Type: application/json' \
+     -d '{"content": ">s1\nATGC\n", "filename": "t.fasta"}'
+```
+
+## 9. Tests (Phase C)
+
+```bash
+python3 -m pytest tests/ -v     # oder
+make test
+```

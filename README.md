@@ -74,6 +74,18 @@ python app.py evolve-now --show-hof                   # Evolution jetzt triggern
 ORGANIC_PORT=9000 python app.py serve                 # Konfig per Environment
 ```
 
+### v4 Phase C (API v2 + Tests)
+
+- **🌐 API v2** — neue Endpoints: `POST /parse`, `GET /stats`, `GET /lineage`, `GET /fitness`, `GET /health` (Pydantic Request-Modelle)
+- **🧪 19 Tests** — `tests/` für Parser, Konfiguration & API (`python3 -m pytest tests/ -v`)
+- **🔧 Makefile** — `make test`, `make run`, `make parse FILE=...`, `make evolve-now`
+
+```bash
+make test                        # alle Tests
+curl -X POST localhost:8000/parse -H 'Content-Type: application/json' \
+     -d '{"content": "@r1\nACGT\n+\nIIII\n"}'
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat
