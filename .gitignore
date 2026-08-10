@@ -23,7 +23,5 @@ Thumbs.db
 # Embedded repo (separate project)
 kali-linux-docker/
 
-# Regenerated reports
-reports/report.html
-reports/report.json
-
+# Laufzeit-Reporte (generiert)
+reports/
