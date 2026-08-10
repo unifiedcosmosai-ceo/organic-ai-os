@@ -25,3 +25,7 @@ kali-linux-docker/
 
 # Laufzeit-Reporte (generiert)
 reports/
+
+# Regenerierte Evolutions-Artefakte
+memory/parser_gen_*.py
+memory/symbiom_hall_of_fame.json
