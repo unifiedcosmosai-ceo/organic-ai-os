@@ -363,3 +363,34 @@ anti-Pseudo-Correctness.
 python -m pytest tests/test_mcts_evolver.py -v   # 10 Tests
 make test                                        # 47 Tests (alle Layer)
 ```
+
+## 13. Skill / Tactic Library (v5)
+
+### Was ist neu?
+
+Verifizierte MCTS-Rollouts werden wiederverwendbar gemacht (Forschung:
+BioWorkflow-PRTE, BEAM-AM, Failure-Library):
+
+- **Gated Library Growth** — eine Taktik wird nur aufgenommen, wenn sie
+  verifiziert ist UND neuartig (AST-normalisierter Dedup-Check).
+- **Typed Skills** — applicability / precondition / postcondition /
+  failure-signature je Taktik (Metadaten fuer den naechsten Transfer).
+- **Failure-Library** — fehlgeschlagene Kandidaten tragen ihre Fehlersignatur
+  in einen Index (max 200) → `match_failure()` unterstuetz den naechsten Run.
+- **Semantisches Retrieval** — `retrieve(specialty)` rankt spezialisierte zuerst.
+- **Hall-of-Fame-Cap** — bei Ueberlauf fliegt die schwaechste Fitness.
+
+### CLI
+
+```bash
+python app.py skills --iterations 80 --min-visits 2 --list
+# → verifizierte Skills nach memory/skill_library.json, Top-5 anzeigen
+python app.py skills --seed-code /pfad/zu/start.py
+```
+
+### Tests
+
+```bash
+python -m pytest tests/test_skill_library.py -v   # 12 Tests
+make test                                         # 59 Tests (alle Layer)
+```

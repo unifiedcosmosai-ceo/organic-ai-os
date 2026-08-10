@@ -484,4 +484,40 @@ Champion-Auswahl gewichtet bestätigte Züge (visits) - keine Pseudo-Correctness
 
 ---
 
-*Technische Doku v1.4 - 2026-08-11 (v5 Phase 1: MCTS-Evolutions-Kern)*
+## 13. v5 Phase 2: Skill / Tactic Library
+
+### 13.1 `11_evolution/skill_library.py`
+
+| Funktion | Verantwortung |
+|---|---|
+| `Tactic` | Typed-Skill: name, code, fitness, specialty, applicability, precondition, postcondition, failure_signature, source, lineage |
+| `SkillLibrary.add` | Gated Growth: nur verifiziert + AST-normalisiert duplikatfrei; Hall-of-Fame-Cap evictet schwächste |
+| `SkillLibrary.verify` | FitnessEvaluator-Run; setzt verified + Failure-Signature bei Misserfolg |
+| `_register_failure` | Failure-Library (max 200 Einträge, code_hash) |
+| `retrieve(specialty)` | Semantisches Retrieval: spezialisierte zuerst, dann generisch nach Fitness |
+| `find_duplicate` / `match_failure` | Dedup bzw. Recovery-Helfer gegen bekannte Fehlersignaturen |
+| `extract_from_mcts` | MCTS-Knoten (visits≥2, fit≥0.3) → Tactic-Kandidaten (Transfer) |
+| `save`/`load` | JSON-Persistenz (`memory/skill_library.json`) |
+| `_flatten_tree` | iterativer Flatten (kein Rekursionslimit) |
+
+Design-Entscheidungen (Forschung 2026):
+- **Gated Library Growth** (ARIADNE-geteilter Zustand): Aufnahme nur bei
+  Verifikation + Neuartigkeit → keine Pseudo-Correctness-Skills.
+- **Failure-Library** (FEV-ähnlich): fehlgeschlagene Codes merken sich ihre
+  Signatur zur spaeteren Vermeidung/Wiederherstellung.
+- **MCTS-Transfer**: bestaetigte Rollouts als Seed fuer den naechsten Run.
+
+### 13.2 CLI
+
+`python app.py skills --iterations N --min-visits N [--list] [--seed-code PATH]`
+→ verifizierte Skills nach `memory/skill_library.json`.
+
+### 13.3 Testabdeckung
+
+- `tests/test_skill_library.py`: 12 Tests (Gates, Dedup, Verify, Failure-Index,
+  Retrieval, Cap, Persistenz, Flatten, Normalize)
+- Gesamtstand: `make test` → **59 Tests** (47 v5-P1 + 12 v5-P2)
+
+---
+
+*Technische Doku v1.5 - 2026-08-11 (v5 Phase 2: Skill / Tactic Library)*

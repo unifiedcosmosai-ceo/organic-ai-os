@@ -396,3 +396,31 @@ LLMMutator("ollama") ohne ollama → stdout, kein Traceback
 python app.py mcts-evolve --tests base        → Champion fit=1.000
 python app.py mcts-evolve --tests adversarial → Champion fit=0.864 (Grenzfaelle aktiv)
 ```
+
+## 15. v5 Phase 2: Skill / Tactic Library
+
+**User:** (Fortsetzung v5, Basis: `main` mit gemergtem PR #6)
+
+**Assistant:**
+- **Branch**: `v5/skill-library` (aus `main`)
+- **`11_evolution/skill_library.py`**: verifizierte, wiederverwendbare Parser-Tactics
+  - `Tactic`: Typed-Skill mit applicability/precondition/postcondition/failure_signature
+  - `SkillLibrary.add`: Gated Growth (verifiziert + AST-Dedup), Hall-of-Fame-Cap evictet schwaechste
+  - `verify`: FitnessEvaluator-Run + Failure-Signature bei Misserfolg; 50 %-Test-Bar
+  - `_register_failure`: Failure-Library (200er-Index) → `match_failure()` Recovery-Helfer
+  - `retrieve(specialty)`: spezialisierte zuerst, dann generisch nach Fitness
+  - `extract_from_mcts`: bestaetigte Rollouts (visits≥2, fit≥0.3) → Tactic-Kandidaten
+  - `save`/`load`: JSON-Persistenz `memory/skill_library.json`
+- **CLI**: `app.py skills --iterations N --min-visits N [--list] [--seed-code]`
+  - Bugfix: Basis-Tests gaben fit=1.0 → frueher MCTS-Break (nur 1 Knoten) → jetzt Adversarial-Tests, Baum waechst
+- **Tests**: `tests/test_skill_library.py` (12 Tests); Gesamtstand `make test` → **59 passed**
+- **Makefile**: `make test-skills`
+- **.gitignore**: `memory/skill_library.json`
+- **Merge**: PR #6-Rebase-Konflikt (.gitignore reports/) geloest; main auf c0f058d
+
+### Demonstriert
+```
+59 passed in 1.21s
+python app.py skills --iterations 80 --list
+# ➕ Skill: v5_adam fit=0.864 → memory/skill_library.json
+```
