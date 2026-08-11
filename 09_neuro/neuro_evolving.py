@@ -1,6 +1,6 @@
-import random, re, json, ast
+import random, re, ast
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List
 
 @dataclass
 class PromptStrand:
@@ -67,7 +67,7 @@ class NeuroCortex:
         code=self.execute_prompt(strand)
         try:
             ast.parse(code)
-        except:
+        except Exception:
             strand.fitness=0.0
             return 0.0
         score=0
@@ -78,7 +78,7 @@ class NeuroCortex:
                 exec(code, {}, ns)
                 score+=(1.0 if fn(ns) else 0.0)*w
                 total+=w
-            except:
+            except Exception:
                 total+=w
         eff=score/(strand.tokens+1)*5 if strand.tokens else 0
         strand.fitness=(score/total if total else 0)+min(0.1,eff)
@@ -123,7 +123,7 @@ def test_basic(ns):
     try:
         r=ns['parse_fasta']('>a\nATGC\n>b\nGG')
         return len(r)==2
-    except:
+    except Exception:
         return False
 
 def test_robust(ns):
@@ -131,7 +131,7 @@ def test_robust(ns):
     try:
         r=ns['parse_fasta']('>a messy\n  atgc  \n\n>b\nGG')
         return len(r)==2 and all(' ' not in v for v in r.values())
-    except:
+    except Exception:
         return False
 
 if __name__=='__main__':

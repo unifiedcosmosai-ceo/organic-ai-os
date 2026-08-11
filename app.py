@@ -40,6 +40,44 @@ def _cfg(args):
     return config.load_config()
 
 
+def _seed_parse_fasta(use_splitlines=False):
+    """Standard parse_fasta Saatcode fuer MCTS/Skill/Budget Demos."""
+    split = "text.splitlines()" if use_splitlines else "text.split(\"\\\\n\")"
+    return f"""def parse_fasta(text):
+    records = {{}}
+    header = ""
+    for line in {split}:
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+
+
+def _basic_tests():
+    """parse_fasta Kern-Tests (t_basic + t_messy) fuer MCTS/Skill/Budget Demos."""
+    def t_basic(ns):
+        if "parse_fasta" not in ns:
+            return False
+        try:
+            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+        except Exception:
+            return False
+
+    def t_messy(ns):
+        if "parse_fasta" not in ns:
+            return False
+        try:
+            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
+            return len(r) == 2 and all(" " not in v for v in r.values())
+        except Exception:
+            return False
+
+    return [(t_basic, 0.6), (t_messy, 0.4)]
+
+
 def build_app():
     from api_server import app
     return app
@@ -125,7 +163,7 @@ def cmd_evolve_now(args):
 
     memory = ao.OrganismMemory()
     watcher = ao.FastaWatcher(memory)
-    ao.NightlyEvolution(memory, watcher).run_nightly()
+    ao.NightlyEvolution(memory, watcher).run_nightly(coevolve=not getattr(args, "no_coevolve", False))
     best = Path(ao.MEMORY_DIR) / "best_parser.py"
     if best.exists():
         print("\nAktueller Champion (best_parser.py):")
@@ -135,6 +173,30 @@ def cmd_evolve_now(args):
         if hof_path.exists():
             print("\nHall of Fame:")
             print(hof_path.read_text()[:800])
+
+
+def cmd_brainstorm(args):
+    """3x3 MCTS-Ideenwald generieren (Top 100 x 4) + Mindmap."""
+    import sys as _sys
+    from pathlib import Path as _P
+    ui_dir = _P(__file__).parent / "13_ui"
+    _sys.path.insert(0, str(ui_dir))
+
+    import mcts_idea_forest as mif
+    import mindmap as mm
+
+    out = mif.build_forest_output(seed=args.seed,
+                                  iterations_per_tree=args.iterations)
+    mm.build_files(str(out), str(out))
+    data = (out / "top100.json")
+    counts = json.loads(data.read_text())["counts"]
+    print(f"\n🧠 MCTS 3x3 Forest v6 — Seed {args.seed}, "
+          f"{args.iterations} Rollouts/Baum")
+    for cat, n in counts.items():
+        print(f"  {cat:16s}: {n}")
+    print(f"\nArtefakte -> {out}/")
+    print("  top100.json · mindmap.md · mindmap.mmd · mindmap.html · mindmap_tree.json")
+    print("UI starten:  python app.py serve  ->  http://localhost:8000/ui")
 
 
 def cmd_coevolve(args):
@@ -169,38 +231,11 @@ def cmd_mcts_evolve(args):
     mcts = __import__("11_evolution.mcts_evolver", fromlist=["MCTSEvolution", "Strand"])
     evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.split("\\n"):
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
+    seed = _seed_parse_fasta()
     if args.seed_code:
         seed = Path(args.seed_code).read_text()
 
-    def t_basic(ns):
-        if "parse_fasta" not in ns:
-            return False
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
-    def t_messy(ns):
-        if "parse_fasta" not in ns:
-            return False
-        try:
-            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
-            return len(r) == 2 and all(" " not in v for v in r.values())
-        except Exception:
-            return False
-
-    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    tests = _basic_tests()
     if args.tests == "adversarial":
         print("🌀 Verdrahtung: adversarial tests aktiviert")
         # invers: da default Pfad ohnehin adversarial ist, nur Info
@@ -234,34 +269,11 @@ def cmd_skills(args):
     evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
     skills_mod = __import__("11_evolution.skill_library", fromlist=["SkillLibrary"])
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.split("\\n"):
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
+    seed = _seed_parse_fasta()
     if args.seed_code:
         seed = Path(args.seed_code).read_text()
 
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
-    def t_messy(ns):
-        try:
-            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
-            return len(r) == 2 and all(" " not in v for v in r.values())
-        except Exception:
-            return False
-
-    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    tests = _basic_tests()
     engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
     testset = engine.adversarial_tests(tests)
     root = engine.run_mcts(mcts.Strand(name="v5_adam", code=seed),
@@ -292,32 +304,9 @@ def cmd_budget(args):
     evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
     bg = __import__("11_evolution.budget_guard", fromlist=["BudgetGuard", "budgeted_mcts"])
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
+    seed = _seed_parse_fasta(use_splitlines=True)
 
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
-    def t_messy(ns):
-        try:
-            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
-            return len(r) == 2 and all(" " not in v for v in r.values())
-        except Exception:
-            return False
-
-    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    tests = _basic_tests()
     engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
     testset = engine.adversarial_tests(tests)
     with bg.BudgetGuard(token_budget=args.token_budget, time_budget=30,
@@ -340,7 +329,7 @@ def cmd_budget(args):
 def cmd_parse_spec(args):
     """Parst eine Datei ueber die Format-Spec-Ableitung (GFF3/VCF, v5)."""
     import json as _json
-    from format_spec import default_specs, detect_spec, derive_parser, parse_file_spec
+    from format_spec import default_specs, detect_spec, parse_file_spec
 
     content = Path(args.file).read_text()
     specs = default_specs()
@@ -429,6 +418,8 @@ def main():
 
     evolve_p = sub.add_parser("evolve-now", help="Evolution sofort triggern")
     evolve_p.add_argument("--show-hof", action="store_true", help="Hall of Fame anzeigen")
+    evolve_p.add_argument("--no-coevolve", action="store_true",
+                          help="Co-Evolution (Prompt<->Code) im Nachtlauf ausschalten")
 
     coev_p = sub.add_parser("coevolve", help="Prompt<->Code Co-Evolution starten")
     coev_p.add_argument("--rounds", type=int, default=3, help="Co-Evolutions-Runden")
@@ -470,6 +461,11 @@ def main():
     agent_p.add_argument("--replay", default="memory/replay_log.json", help="Replay-Log Pfad")
     agent_p.add_argument("--seed", type=int, default=42, help="Deterministischer Seed")
 
+    bst_p = sub.add_parser("brainstorm",
+                           help="3x3 MCTS-Ideenwald: Top 100 Upgrades/Optimisations/Extensions/Automatisation (v6)")
+    bst_p.add_argument("--iterations", type=int, default=400, help="Rollouts je Baum")
+    bst_p.add_argument("--seed", type=int, default=42, help="Deterministischer Seed")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -498,6 +494,8 @@ def main():
         cmd_specs(args)
     elif args.command == "agent":
         cmd_agent(args)
+    elif args.command == "brainstorm":
+        cmd_brainstorm(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app

@@ -1,7 +1,7 @@
 # 🧠 Organic AI OS — Research & Brainstorm: 3×3 Monte-Carlo-Tree Mindmap
 
 > **Auftrag:** Research → Brainstorm → 3×3-MCT-Mindmap → **Top 100 Upgrades · 100 Optimisations · 100 Extensions · 100 Automatisierungs-Ideen (Tools/Loops/Workflows/Templates/Designs)**
-> **Stand:** 2026-08-11 (v4 abgeschlossen, Research für v5)
+> **Stand:** 2026-08-11 — v5/v6: Die hier entwickelte Methodik ist als **Layer 13 (v6)** implementiert (`13_ui/mcts_idea_forest.py` + `13_ui/mindmap.py`, CLI `python app.py brainstorm`).
 
 ---
 
