@@ -551,4 +551,39 @@ bestehender Baum, damit Budget-Batches sind nicht mehr zurücksetzen.
 
 ---
 
-*Technische Doku v1.6 - 2026-08-11 (v5 Phase 3: Budget-Guard)*
+## 15. v5 Phase 4: Format-Spec-Schema
+
+### 15.1 `format_spec.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `FormatSpec` | DSL-dataclass: name, marker, comment, sep, columns, has_attributes, skip_header_markers |
+| `default_specs()` | Registry: GFF3 (9 Spalten + attrs-Map) + VCF (8 Spalten, INFO roh) |
+| `derive_parser(spec)` | Code-Generator: Spec → ausfuehrbare `parse_<name>` Funktion (JSON-Spalten, attrs-Ableitung) |
+| `parse_file_spec` | faehrt den abgeleiteten Parser aus (Schema-Runtime) |
+| `detect_spec` | Marker-basierte Auto-Detektion (GFF3/VCF), FASTA/FASTQ → None |
+| `specs_to_json`/`list_specs` | Serialisierung / CLI-Ansicht |
+| `FormatSpec.from_dict` | Specs aus JSON/TOML laden (erweiterbar) |
+
+Design-Entscheidungen (Forschung: KBase, Template-Parser):
+- **Schema als Code-Quelle**: Parser werden generiert, nicht gewartet —
+  neue Formate = neue Spec-Zeile, kein Parser-Neucode.
+- **Attributes-Map nur wenn `has_attributes`**: GFF3 bekommt Struktur,
+  VCF bleibt roh (kein Pseudo-Typisieren).
+- **`import`-frei** (`test_derive_parser_pure`): generierter Code ist selbstenthalten.
+
+### 15.2 CLI
+
+- `python app.py specs` — Liste der Specs
+- `python app.py parse-spec <file> [--spec gff3|vcf|auto]`
+
+### 15.3 Testabdeckung
+
+- `tests/test_format_spec.py`: 13 Tests (Registry, Compile, Pure, Detect,
+  GFF3-attrs, VCF-Spalten, Kommentar-Skip, malformed-Skip, JSON-Roundtrip,
+  Custom-BED-Spec)
+- Gesamtstand: `make test` → **83 Tests** (70 v5-P3 + 13 v5-P4)
+
+---
+
+*Technische Doku v1.7 - 2026-08-11 (v5 Phase 4: Format-Spec-Schema)*

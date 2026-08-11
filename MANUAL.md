@@ -429,3 +429,35 @@ REASON-CODE-Entscheidung (Greedy vs MCTS-Search).
 python -m pytest tests/test_budget_guard.py -v   # 11 Tests
 make test                                        # 70 Tests (alle Layer)
 ```
+
+## 15. Format-Spec-Schema (v5)
+
+### Was ist neu?
+
+Ein schema-basierter Metaparser: statt Parser pro Format hart zu kodieren,
+wird ein **Format-Spec** (DSL) abgelegt und der Parser daraus **abgeleitet**
+(Forschung: KBase-Tools, Ontologie-Mapping, Template-Parser).
+
+- **GFF3** — 9 Spalten, `attributes`-Spalte wird in ein dict gemappt
+  (`ID=g1;Name=x` → `{"ID": "g1", "Name": "x"}`)
+- **VCF** — 8 Spalten (CHROM…INFO), INFO bleibt als Rohstring
+- **Beliebige eigene Specs** — `FormatSpec(name, marker, sep, columns, has_attributes)`
+  erzeugt per `derive_parser()` lauffaehigen Parser-Code
+
+Vorteil: neue Formate (BED, SAM, GenBank) sind nur noch eine Spec-Definition,
+kein handgeschriebener Parser.
+
+### CLI
+
+```bash
+python app.py spec                                    # registrierte Specs anzeigen
+python app.py parse-spec /pfad/zu/datei.gff          # Auto-Detect + parsen
+python app.py parse-spec /pfad/zu/vcf --spec vcf     # Spec erzwingen
+```
+
+### Tests
+
+```bash
+python -m pytest tests/test_format_spec.py -v   # 13 Tests
+make test                                       # 83 Tests (alle Layer)
+```

@@ -447,8 +447,33 @@ python app.py skills --iterations 80 --list
 
 ### Demonstriert
 ```
-70 passed in 1.25s
+70 passed in 1.32s
 python app.py budget --token-budget 300 --iterations 40
-# ⏱️ tokens 60/300 | iter 40/40 | depth 6 | searches 10
-# REASON-CODE: Greedy fit 0.864 < 0.9 -> MCTS-Search war noetig
+⏱️ tokens 60/300 | iter 40/40 | depth 6 | searches 10
+REASON-CODE: Greedy fit 0.864 < 0.9 -> MCTS-Search war noetig
+```
+
+## 17. v5 Phase 4: Format-Spec-Schema
+
+**User:** merge PR #8 → weiter
+
+**Assistant:**
+- **Branch**: `v5/format-spec` (aus `main` nach Merge PR #8)
+- **`format_spec.py`**: schema-basierter Metaparser (Forschung: KBase, Template-Parser)
+  - `FormatSpec` DSL: name, marker, comment, sep, columns, has_attributes
+  - `default_specs()`: GFF3 (9 Spalten, attrs-Map `ID=g1;Name=x` → dict) + VCF (8 Spalten, INFO roh)
+  - `derive_parser()`: Spec → ausfuehrbaren `parse_<name>` Code (import-frei)
+  - `parse_file_spec()`/`detect_spec()`: Runtime + Marker-Auto-Detektion
+  - `specs_to_json()`/`list_specs()`: Serialisierung/CLI
+- **CLI**: `app.py specs` + `app.py parse-spec <file> [--spec gff3|vcf|auto]`
+- **Bugfix (generierter Code)**: attrs-Zeile referenzierte `rec` statt `recs` → auf `recs` umgestellt
+- **Tests**: `tests/test_format_spec.py` (13 Tests inkl. Custom-BED-Spec-ableitung); `make test` → **83 passed**
+- **Makefile**: `make test-spec`
+- **Doku**: MANUAL §15, DOCS §15, README „v5 Phase 4", CHAT_LOG §17
+
+### Demonstriert
+```
+83 passed in 1.36s
+python app.py parse-spec sample.gff
+# 🎯 Spec: gff3 | Records: 1 | {"chr1": {"source":"src", ..., "attributes": {"ID":"g1"}}}
 ```
