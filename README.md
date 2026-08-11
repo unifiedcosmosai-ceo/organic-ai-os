@@ -146,6 +146,18 @@ python app.py budget --token-budget 500 --iterations 60
 make test      # 70 Tests (59 v5-P2 + 11 v5-P3)
 ```
 
+### v5 Phase 4 (Format-Spec-Schema)
+
+- **🧬 Schema-Metaparser** — Formate als DSL-Spec, Parser daraus automatisiert abgeleitet (GFF3 + VCF neu)
+- **🗂️ GFF3** — 9 Spalten, `attributes`-Spalte wird in ein dict gemappt
+- **🧬 VCF** — 8 Spalten, INFO als Rohstring; neue Formate = neue Spec, kein Parser-Neucode
+
+```bash
+python app.py parse-spec datei.gff         # Auto-Detect + parsen
+python app.py specs                        # registrierte Specs
+make test      # 83 Tests (70 v5-P3 + 13 v5-P4)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat

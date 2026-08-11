@@ -337,6 +337,32 @@ def cmd_budget(args):
         print(f"  REASON-CODE: Greedy fit={fit:.3f} < 0.9 -> MCTS-Search war noetig")
 
 
+def cmd_parse_spec(args):
+    """Parst eine Datei ueber die Format-Spec-Ableitung (GFF3/VCF, v5)."""
+    import json as _json
+    from format_spec import default_specs, detect_spec, derive_parser, parse_file_spec
+
+    content = Path(args.file).read_text()
+    specs = default_specs()
+    spec = specs.get(args.spec) if args.spec != "auto" else detect_spec(content)
+    if spec is None:
+        print(f"✗ Kein Format-Spec erkannt (Auto-Detect). Specs: {', '.join(specs.keys())}")
+        return
+    records = parse_file_spec(spec, content)
+    print(f"🎯 Spec: {spec.name} | Records: {len(records)}")
+    print(_json.dumps(records, indent=2, ensure_ascii=False)[:1500])
+
+
+def cmd_specs(args):
+    """Listet registrierte Format-Specs (v5)."""
+    from format_spec import default_specs, list_specs
+
+    specs = default_specs()
+    for name in list_specs():
+        spec = specs[name]
+        print(f"  {name:8s} marker={spec.marker:20s} columns={len(spec.columns)} attrs={spec.has_attributes}")
+
+
 def run_organism(port: int = 8000):
     """Startet Watcher + naechtliche Evolution + API parallel."""
     import autonomous_organism as ao
@@ -407,6 +433,13 @@ def main():
     skills_p.add_argument("--list", action="store_true", help="Top-Skills nach dem Lauf anzeigen")
     skills_p.add_argument("--seed-code", default=None, help="Pfad zu Startcode")
 
+    spec_p = sub.add_parser("parse-spec", help="Format-Spec Datei parsen (GFF3/VCF, v5)")
+    spec_p.add_argument("file", help="Pfad zur Spec-Datei")
+    spec_p.add_argument("--spec", choices=["gff3", "vcf", "auto"], default="auto",
+                        help="Spec erzwingen oder Auto-Detect")
+
+    sub.add_parser("specs", help="Registrierte Format-Specs anzeigen (v5)")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -429,6 +462,10 @@ def main():
         cmd_mcts_evolve(args)
     elif args.command == "budget":
         cmd_budget(args)
+    elif args.command == "parse-spec":
+        cmd_parse_spec(args)
+    elif args.command == "specs":
+        cmd_specs(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app
