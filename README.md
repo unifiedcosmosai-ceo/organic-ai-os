@@ -158,6 +158,18 @@ python app.py specs                        # registrierte Specs
 make test      # 83 Tests (70 v5-P3 + 13 v5-P4)
 ```
 
+### v5 Phase 5 (Tool-Registry + Agent-Fassade)
+
+- **🤖 Organic-Copilot** — alle Fähigkeiten als registrierte Tools (parse, evolve, skills, budget, specs, status)
+- **🎬 Workflow** — `python app.py agent status specs budget` führt eine Schrittfolge aus (KBase-Narrative-Stil)
+- **📼 Replay-Log (FEV)** — jeder Aufruf wird mit Provenance geloggt; `verify_replay()` prüft Anti-Tamper-Integrität
+
+```bash
+python app.py agent status specs budget      # 3 Tools orchestrieren
+python app.py agent --list-tools             # verfügbare Tools
+make test      # 101 Tests (83 v5-P4 + 18 v5-P5)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat

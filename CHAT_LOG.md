@@ -475,5 +475,32 @@ REASON-CODE: Greedy fit 0.864 < 0.9 -> MCTS-Search war noetig
 ```
 83 passed in 1.36s
 python app.py parse-spec sample.gff
-# 🎯 Spec: gff3 | Records: 1 | {"chr1": {"source":"src", ..., "attributes": {"ID":"g1"}}}
+# 🎯 Spec: gff3 | Records: 1 | {"chr1": {... "attributes": {"ID": "g1"}}}
+```
+
+## 18. v5 Phase 5: Tool-Registry + Agent-Fassade + Replay
+
+**User:** merge PR #9 → weiter
+
+**Assistant:**
+- **Branch**: `v5/tool-registry` (aus `main` nach Merge PR #9)
+- **`tool_registry.py`**: "Organic-Copilot" (Forschung: BioMedAgent, KBase, MARWA, FEV)
+  - `ToolRegistry`: register/register_all/run, list_tools, tool_meta
+  - `ReplayEntry` + `run()`: jeder Aufruf mit ts/tool/args/result/ok/seed
+  - `save_replay`/`load_replay`/`verify_replay`: FEV-Bundle + Integrity-Hash (Anti-Tamper)
+  - `summary`: Calls/Failed/Replay-Hash
+  - Standard-Tools: parse_file, parse_spec, status, mcts_evolve, skill_library, budget, specs
+  - `make_agent`/`run_agent_workflow`: Agent-Fabrik + Schrittfolge (`parse_file:/pfad` = Argument-Durchreiche)
+- **CLI**: `app.py agent [steps...] [--list-tools] [--replay PATH] [--seed N]`
+- **Tests**: `tests/test_tool_registry.py` (18 Tests inkl. Tamper-Detection); `make test` → **101 passed**
+- **Makefile**: `make test-tools`
+- **.gitignore**: `memory/replay_log.json`, `memory/replay_demo.json`
+- **Doku**: MANUAL §16, DOCS §16, README „v5 Phase 5", CHAT_LOG §18
+
+### Demonstriert
+```
+101 passed in 1.43s
+python app.py agent status specs budget --seed 7
+# ✅ status | ✅ specs | ✅ budget
+# 📦 Replay-Bundle: memory/replay_log.json | Calls: 3 | Failed: 0 | Verify: True
 ```

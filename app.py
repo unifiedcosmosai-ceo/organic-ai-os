@@ -363,6 +363,29 @@ def cmd_specs(args):
         print(f"  {name:8s} marker={spec.marker:20s} columns={len(spec.columns)} attrs={spec.has_attributes}")
 
 
+def cmd_agent(args):
+    """Tool-Registry Agent-Fassade: Faehigkeiten orchestrieren + Replay-Log (v5)."""
+    from tool_registry import make_agent, run_agent_workflow
+
+    agent = make_agent(replay_path=Path(args.replay), seed=args.seed)
+    if args.list_tools:
+        print("Verfuegbare Tools:")
+        for name in agent.list_tools():
+            print(f"  {name:16s} {agent.tool_meta[name]['description']}")
+        return
+    if not args.steps:
+        print("Keine Schritte. Tools:", ", ".join(agent.list_tools()))
+        print("Beispiel: python app.py agent status specs budget")
+        return
+    results = run_agent_workflow(agent, args.steps)
+    for step, r in results.items():
+        status = "✅" if r["ok"] else "❌"
+        print(f"  {status} {step}: {json.dumps(r['result'], ensure_ascii=False)[:120]}")
+    bundle = agent.save_replay()
+    print(f"\n📦 Replay-Bundle: {bundle} | Calls: {agent.summary['total_calls']} "
+          f"| Failed: {agent.summary['failed']} | Verify: {agent.verify_replay(bundle)}")
+
+
 def run_organism(port: int = 8000):
     """Startet Watcher + naechtliche Evolution + API parallel."""
     import autonomous_organism as ao
@@ -440,6 +463,13 @@ def main():
 
     sub.add_parser("specs", help="Registrierte Format-Specs anzeigen (v5)")
 
+    agent_p = sub.add_parser("agent", help="Tool-Registry Agent-Fassade (v5)")
+    agent_p.add_argument("steps", nargs="*",
+                         help="Tool-Schritte: z.B. status specs mcts_evolve budget (oder parse_file:/pfad)")
+    agent_p.add_argument("--list-tools", action="store_true", help="Verfuegbare Tools anzeigen")
+    agent_p.add_argument("--replay", default="memory/replay_log.json", help="Replay-Log Pfad")
+    agent_p.add_argument("--seed", type=int, default=42, help="Deterministischer Seed")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -466,6 +496,8 @@ def main():
         cmd_parse_spec(args)
     elif args.command == "specs":
         cmd_specs(args)
+    elif args.command == "agent":
+        cmd_agent(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app

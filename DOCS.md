@@ -586,4 +586,43 @@ Design-Entscheidungen (Forschung: KBase, Template-Parser):
 
 ---
 
-*Technische Doku v1.7 - 2026-08-11 (v5 Phase 4: Format-Spec-Schema)*
+## 16. v5 Phase 5: Tool-Registry + Agent-Fassade + Replay
+
+### 16.1 `tool_registry.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `ReplayEntry` | Provenance pro Aufruf: ts/tool/args/result/ok/seed |
+| `ToolRegistry.register/register_all` | Tool-Abstraktion (Name + Beschreibung) |
+| `ToolRegistry.run` | führt Tool aus, fängt Exceptions, loggt Replay (FEV) |
+| `save_replay`/`load_replay`/`verify_replay` | Bundle + Integrity-Hash (Anti-Tamper) |
+| `summary` | Calls/Failed/Replay-Hash für CLI/API |
+| `parse_file_tool` | FASTA/FASTQ-Parse (bio_formats) |
+| `parse_spec_tool` | GFF3/VCF via Format-Spec |
+| `status_tool` | Organismus-Status (Memory + Hall of Fame) |
+| `mcts_evolve_tool` | MCTS-Evolutions-Champion |
+| `skill_library_tool` | MCTS-Rollouts → verifizierte Skills |
+| `budget_tool` | budget-begrenzter MCTS-Run (BudgetGuard) |
+| `specs_tool` | registrierte Format-Specs |
+| `make_agent` | Fabrik: Agent mit Standard-Tools + Replay-Pfad + Seed |
+| `run_agent_workflow` | führt Schrittfolge aus (`parse_file:/pfad` = Argument-Durchreiche) |
+
+Design (Forschung 2026):
+- **FEV-Provenance**: Korrektheit wird am Aufruf-Verlauf gemessen, nicht an
+  einer End-Antwort → Replay + Verifikation sind die Währung.
+- **Deterministischer Seed**: Replay-Reproduzierbarkeit (Gen0→GenN).
+- **Workflow-Narrative** (KBase): Schrittfolge = reproduzierbares Bundle.
+
+### 16.2 CLI
+
+- `python app.py agent [steps...] [--list-tools] [--replay PATH] [--seed N]`
+
+### 16.3 Testabdeckung
+
+- `tests/test_tool_registry.py`: 18 Tests (Registry, run ok/error, Replay-
+  Roundtrip, Tamper-Detection, Summary, Standard-Tools, Workflow, je Tool-Smoke)
+- Gesamtstand: `make test` → **101 Tests** (83 v5-P4 + 18 v5-P5)
+
+---
+
+*Technische Doku v1.8 - 2026-08-11 (v5 Phase 5: Tool-Registry + Agent)*
