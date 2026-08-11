@@ -1,4 +1,4 @@
-.PHONY: all test test-api test-regression test-mcts test-skills test-budget test-spec coverage run parse evolve-now report clean
+.PHONY: all test test-api test-regression test-mcts test-skills test-budget test-spec test-tools coverage run parse evolve-now report clean
 
 # Automatische Unit- + Regressions-Tests (CI-Einstieg)
 all: test
@@ -26,6 +26,10 @@ test-budget:
 # Nur die Format-Spec-Suite (v5)
 test-spec:
 	python3 -m pytest tests/test_format_spec.py -v
+
+# Nur die Tool-Registry-Suite (v5)
+test-tools:
+	python3 -m pytest tests/test_tool_registry.py -v
 
 # Nur API-Tests
 test-api:

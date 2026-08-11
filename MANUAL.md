@@ -461,3 +461,36 @@ python app.py parse-spec /pfad/zu/vcf --spec vcf     # Spec erzwingen
 python -m pytest tests/test_format_spec.py -v   # 13 Tests
 make test                                       # 83 Tests (alle Layer)
 ```
+
+## 16. Tool-Registry + Agent-Fassade (v5)
+
+### Was ist neu?
+
+Der "Organic-Copilot" (Forschung: BioMedAgent, KBase, MARWA, FEV):
+
+- **Tool-Registry** — alle Fähigkeiten (parse, parse_spec, status, mcts_evolve,
+  skill_library, budget, specs) als registrierte, aufgerufene Funktionen.
+- **Agent-Fassade** — `run_agent_workflow()` führt eine Folge von Tools aus
+  (KBase-Narrative-Stil), `parse_file:/pfad` reicht Argumente durch.
+- **Replay-Log (FEV)** — jeder Aufruf wird mit ts/tool/args/result/ok/seed
+  geloggt; `save_replay()` erzeugt ein Bundle mit Integrity-Hash.
+- **Verifikation** — `verify_replay()` prüft, dass kein Eintrag manipuliert
+  wurde (Anti-Tamper, FEV-Provenance).
+
+### CLI
+
+```bash
+python app.py agent status specs budget          # Workflow: 3 Tools
+python app.py agent parse_file:/pfad/datei.fa    # Tool mit Argument
+python app.py agent --list-tools                 # verfügbare Tools
+```
+
+Am Ende liegt das Replay-Bundle (standard: `memory/replay_log.json`) mit
+Zusammenfassung (Calls, Failed, Verify).
+
+### Tests
+
+```bash
+python -m pytest tests/test_tool_registry.py -v   # 18 Tests
+make test                                         # 101 Tests (alle Layer)
+```

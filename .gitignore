@@ -30,3 +30,5 @@ reports/
 memory/parser_gen_*.py
 memory/symbiom_hall_of_fame.json
 memory/skill_library.json
+memory/replay_log.json
+memory/replay_demo.json
