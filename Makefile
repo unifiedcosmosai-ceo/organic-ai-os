@@ -1,4 +1,4 @@
-.PHONY: all test test-api test-regression test-mcts test-skills coverage run parse evolve-now report clean
+.PHONY: all test test-api test-regression test-mcts test-skills test-budget coverage run parse evolve-now report clean
 
 # Automatische Unit- + Regressions-Tests (CI-Einstieg)
 all: test
@@ -18,6 +18,10 @@ test-mcts:
 # Nur die Skill-Library-Suite (v5)
 test-skills:
 	python3 -m pytest tests/test_skill_library.py -v
+
+# Nur die Budget-Guard-Suite (v5)
+test-budget:
+	python3 -m pytest tests/test_budget_guard.py -v
 
 # Nur API-Tests
 test-api:

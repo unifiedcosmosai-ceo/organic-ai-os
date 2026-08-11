@@ -207,7 +207,18 @@ def cmd_mcts_evolve(args):
     engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
     root = mcts.Strand(name="v5_adam", code=seed)
     testset = engine.adversarial_tests(tests) if args.tests == "adversarial" else tests
-    best = engine.run_mcts(root, evo_mod.FitnessEvaluator, testset, iterations=args.iterations)
+    if args.budget:
+        bg = __import__("11_evolution.budget_guard", fromlist=["BudgetGuard", "budgeted_mcts"])
+        with bg.BudgetGuard(token_budget=max(100, args.iterations), time_budget=60,
+                            iteration_budget=args.iterations, soft=True) as guard:
+            best_root, snap = bg.budgeted_mcts(engine, root, evo_mod.FitnessEvaluator,
+                                               testset, args.iterations, guard)
+        best = engine._best_confirmed(best_root)
+        print(f"\n⏱️  Budget-Guard: tokens {snap.tokens_used:.0f}/{snap.token_budget:.0f} | "
+              f"iter {snap.iterations_used}/{snap.iteration_budget} | time {snap.time_used:.2f}s | "
+              f"depth {snap.depth} | searches {snap.searches_run}")
+    else:
+        best = engine.run_mcts(root, evo_mod.FitnessEvaluator, testset, iterations=args.iterations)
     print(f"\n🏆 MCTS CHAMPION: {best.strand.name}  fit={best.strand.fitness:.3f}  visits={best.visits}")
     print("-" * 50)
     print(best.strand.code)
@@ -274,6 +285,58 @@ def cmd_skills(args):
             print(f"  {i}. {s.name} fit={s.fitness:.3f} source={s.source} gen={s.generation}")
 
 
+def cmd_budget(args):
+    """Budget-Guard Demo: begrenzter MCTS-Run + Pareto-Report (v5)."""
+    sys.path.insert(0, "11_evolution")
+    mcts = __import__("11_evolution.mcts_evolver", fromlist=["MCTSEvolution", "Strand"])
+    evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
+    bg = __import__("11_evolution.budget_guard", fromlist=["BudgetGuard", "budgeted_mcts"])
+
+    seed = """def parse_fasta(text):
+    records = {}
+    header = ""
+    for line in text.splitlines():
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+
+    def t_basic(ns):
+        try:
+            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+        except Exception:
+            return False
+
+    def t_messy(ns):
+        try:
+            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
+            return len(r) == 2 and all(" " not in v for v in r.values())
+        except Exception:
+            return False
+
+    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
+    testset = engine.adversarial_tests(tests)
+    with bg.BudgetGuard(token_budget=args.token_budget, time_budget=30,
+                        iteration_budget=args.iterations, soft=True) as guard:
+        root, snap = bg.budgeted_mcts(engine, mcts.Strand(name="v5_adam", code=seed),
+                                      evo_mod.FitnessEvaluator, testset, args.iterations, guard)
+    best = engine._best_confirmed(root)
+    print(f"\n⏱️  Budget-Guard Report")
+    print(f"  Budget: {snap.to_dict()}")
+    print(f"  Champion: {best.strand.name} fit={best.strand.fitness:.3f}")
+    # REASON-CODE-Greedy: haette Search gespart?
+    fit = evo_mod.FitnessEvaluator.evaluate(seed, testset)
+    if fit >= 0.9:
+        guard.record_greedy()
+        print(f"  REASON-CODE: Greedy fit={fit:.3f} >= 0.9 -> MCTS-Search haette gespart werden koennen")
+    else:
+        print(f"  REASON-CODE: Greedy fit={fit:.3f} < 0.9 -> MCTS-Search war noetig")
+
+
 def run_organism(port: int = 8000):
     """Startet Watcher + naechtliche Evolution + API parallel."""
     import autonomous_organism as ao
@@ -330,6 +393,13 @@ def main():
     mcts_p.add_argument("--tests", choices=["base", "adversarial"], default="adversarial",
                         help="Testbasis (base = nur Kern-Tests, adversarial = + Grenzfaelle)")
     mcts_p.add_argument("--seed-code", default=None, help="Pfad zu Startcode (default: eingebauter parse_fasta-Saatcode)")
+    mcts_p.add_argument("--budget", action="store_true",
+                        help="Budget-Guard aktivieren (Tokens/Zeit/Iterationen begrenzen, adaptive Tiefe)")
+
+    budget_p = sub.add_parser("budget", help="Budget-Guard Check & Status (v5)")
+    budget_p.add_argument("--token-budget", type=float, default=500.0, help="Token-Budget")
+    budget_p.add_argument("--iterations", type=int, default=60, help="Iterations-Budget")
+    budget_p.add_argument("--list", action="store_true", help="Budget-Run reporten")
 
     skills_p = sub.add_parser("skills", help="MCTS-Rollouts → Skill/Tactic-Bibliothek (v5)")
     skills_p.add_argument("--iterations", type=int, default=80, help="MCTS-Rollouts")
@@ -353,10 +423,12 @@ def main():
         cmd_coevolve(args)
     elif args.command == "report":
         cmd_report(args)
-    elif args.command == "mcts-evolve":
-        cmd_mcts_evolve(args)
     elif args.command == "skills":
         cmd_skills(args)
+    elif args.command == "mcts-evolve":
+        cmd_mcts_evolve(args)
+    elif args.command == "budget":
+        cmd_budget(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app

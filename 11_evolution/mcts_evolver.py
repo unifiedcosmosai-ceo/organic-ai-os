@@ -99,10 +99,15 @@ class MCTSEvolution:
             node.value += reward * (0.9 ** node.depth)   # Discount mit Tiefe (Prozess-Reward)
             node = node.parent
 
-    def run_mcts(self, root_strand: Strand, fitness_fn: Callable, tests: List[Tuple[Callable, float]], iterations: int = None) -> MCTNode:
-        """Fuehrt die MCTS-Suche aus und gibt den besten bestaetigten Strand."""
+    def run_mcts(self, root_strand: Strand, fitness_fn: Callable, tests: List[Tuple[Callable, float]], iterations: int = None, root: MCTNode = None) -> MCTNode:
+        """Fuehrt die MCTS-Suche aus und gibt den besten bestaetigten Strand.
+
+        `root` (optional): vorhandener Baum, an den weiter expandiert wird
+        (Budget-Modus: mehrere Batches teilen sich einen Suchbaum).
+        """
         iterations = iterations or self.max_rollouts
-        root = MCTNode(strand=root_strand)
+        if root is None:
+            root = MCTNode(strand=root_strand)
         for i in range(iterations):
             leaf = self.selection(root)
             if leaf.visits > 0 and not leaf.children:
