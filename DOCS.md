@@ -520,4 +520,35 @@ Design-Entscheidungen (Forschung 2026):
 
 ---
 
-*Technische Doku v1.5 - 2026-08-11 (v5 Phase 2: Skill / Tactic Library)*
+## 14. v5 Phase 3: Budget-Guard
+
+### 14.1 `11_evolution/budget_guard.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `BudgetSnapshot` | momentane Kostenlage: Tokens/Zeit/Iterationen, ratios, depth |
+| `BudgetGuard` | Kontextmanager + Zählwerk; `check()` wirft `BudgetExceeded` (hart) oder liefert Snapshot (soft) |
+| `guard.adapt_depth` | REASON-CODE: Tiefe um −45 %/−20 % je Erschöpfungsstufe (min_depth-Floor) |
+| `guard.beta_filter` | Sub-Budget-Abschaltung: billige Vorsortierung ohne volle Bewertung |
+| `guard.pareto_energy` | Effizienz-Score: Fitness·(0.5+0.25·Speed+0.25·Token-Saving) |
+| `pareto_front` | dominante Punkte über die Pareto-Front |
+| `budgeted_mcts` | MCTS in Batches, geteilter Suchbaum (ARIADNE), adaptive Tiefe, weicher Abbruch |
+| `greedy_or_search` | Greedy zuerst, MCTS-Search nur bei Bedarf (Budgetersparnis) |
+
+Zusätzliche Änderung: `mcts_evolver.run_mcts(..., root=None)` — optionaler
+bestehender Baum, damit Budget-Batches sind nicht mehr zurücksetzen.
+
+### 14.2 CLI
+
+- `python app.py mcts-evolve --iterations N --budget`
+- `python app.py budget --token-budget N --iterations N`
+
+### 14.3 Testabdeckung
+
+- `tests/test_budget_guard.py`: 11 Tests (hart/soft, Iterations/Zeit-Break,
+  adaptive Tiefe, beta_filter, Pareto-Energie/-Front, budgeted_mcts-Caps, Greedy)
+- Gesamtstand: `make test` → **70 Tests** (59 v5-P2 + 11 v5-P3)
+
+---
+
+*Technische Doku v1.6 - 2026-08-11 (v5 Phase 3: Budget-Guard)*

@@ -133,6 +133,19 @@ python app.py skills --iterations 80 --min-visits 2 --list
 make test      # 59 Tests (47 v5-P1 + 12 v5-P2)
 ```
 
+### v5 Phase 3 (Budget-Guard)
+
+- **⏱️ Mitochondrium** — globaler Kosten-Guard: Token-/Zeit-/Iterations-Budgets, adaptiv
+- **🧭 Adaptive Suchtiefe** — REASON-CODE: Tiefe sinkt bei Budget-Erschöpfung (−45 %/−20 %)
+- **🎯 Greedy-zuerst** — MCTS-Search nur wenn fallback-DNA schwach ist (spart Tokens)
+- **📉 Pareto-Energie** — effiziente Lösungen (schnell + token-sparsam) werden belohnt
+
+```bash
+python app.py mcts-evolve --iterations 100 --budget
+python app.py budget --token-budget 500 --iterations 60
+make test      # 70 Tests (59 v5-P2 + 11 v5-P3)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat

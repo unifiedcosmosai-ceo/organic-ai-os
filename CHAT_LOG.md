@@ -424,3 +424,31 @@ python app.py mcts-evolve --tests adversarial → Champion fit=0.864 (Grenzfaell
 python app.py skills --iterations 80 --list
 # ➕ Skill: v5_adam fit=0.864 → memory/skill_library.json
 ```
+
+## 16. v5 Phase 3: Budget-Guard
+
+**User:** merge PR #7 → weiterechnen mit Budget-Guard
+
+**Assistant:**
+- **Branch**: `v5/budget-guard` (aus `main` nach Merge PR #7)
+- **`11_evolution/budget_guard.py`**: globaler Kosten-Guard ("Mitochondrium")
+  - `BudgetGuard` Kontextmanager: Zählwerk (Tokens/Zeit/Iterationen); `check()` wirft `BudgetExceeded` (hart) oder weicher Snapshot (soft)
+  - `adapt_depth()`: adaptive Suchtiefe (REASON-CODE) −45 % >0.85, −20 % >0.6, min_depth-Floor
+  - `beta_filter()`: Sub-Budget-Abschaltung (Vorsortierung ohne volle Bewertung)
+  - `pareto_energy()`/`pareto_front()`: Effizienz-Bewertung (Speed+Tokens)
+  - `budgeted_mcts()`: Batch-MCTS mit geteiltem Suchbaum (ARIADNE), weicher Abbruch
+  - `greedy_or_search()`: Greedy zuerst, MCTS-Search nur bei Bedarf
+- **mcts_evolver.py**: `run_mcts(..., root=None)` — optionaler Baum, damit Budget-Batches den Suchbaum teilen
+- **CLI**: `app.py mcts-evolve --budget`; neu `app.py budget --token-budget N --iterations N` (Report + REASON-CODE-Entscheidung)
+- **Bugfix (Escaping)**: Budget-Demo-Seed nutzte 4-fach-escaptes `\\n` (Literal-Backslash) vs echte Newlines in Tests → z. B. splitlines()
+- **Tests**: `tests/test_budget_guard.py` (11 Tests); Gesamtstand `make test` → **70 passed**
+- **Makefile**: `make test-budget`
+- **Doku**: MANUAL §14, DOCS §14, README „v5 Phase 3", CHAT_LOG §16
+
+### Demonstriert
+```
+70 passed in 1.25s
+python app.py budget --token-budget 300 --iterations 40
+# ⏱️ tokens 60/300 | iter 40/40 | depth 6 | searches 10
+# REASON-CODE: Greedy fit 0.864 < 0.9 -> MCTS-Search war noetig
+```

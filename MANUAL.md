@@ -394,3 +394,38 @@ python app.py skills --seed-code /pfad/zu/start.py
 python -m pytest tests/test_skill_library.py -v   # 12 Tests
 make test                                         # 59 Tests (alle Layer)
 ```
+
+## 14. Budget-Guard (v5)
+
+### Was ist neu?
+
+Ein globaler Kosten-Guard - "das Mitochondrium" der Evolution (Forschung:
+REASON-CODE, RPM-MCTS, FEV):
+
+- **Token-/Zeit-/Iterations-Budgets** — harte Obergrenze je Lauf; je nach
+  `soft`-Modus Abbruch (`BudgetExceeded`) oder weicher Stopp mit Zwischentand.
+- **Adaptive Suchtiefe** — nähert sich das Budget der Erschöpfung, sinkt die
+  MCTS-Tiefe (−45 % über 0.85, −20 % über 0.6).
+- **Sub-Budget-Abschaltung** — `beta_filter()` sortiert Kandidaten ohne VOLLE
+  Bewertung vor (spart Zeit/Tokens).
+- **Pareto-Energie** — `pareto_energy()` belohnt schnelle, token-sparsame
+  Lösungen; `pareto_front()` liefert die dominante Front.
+- **REASON-CODE-Greedy** — `greedy_or_search()`: wenn die greedy/fallback-DNA
+  schon fit≥Schwelle liefert, wird die teure MCTS-Search übersprungen.
+
+### CLI
+
+```bash
+python app.py mcts-evolve --iterations 100 --budget   # MCTS unter Budget
+python app.py budget --token-budget 500 --iterations 60   # Budget-Report
+```
+
+Der Report zeigt Tokens/Zeit/Iterationen, adaptive Tiefe, Suchanzahl und die
+REASON-CODE-Entscheidung (Greedy vs MCTS-Search).
+
+### Tests
+
+```bash
+python -m pytest tests/test_budget_guard.py -v   # 11 Tests
+make test                                        # 70 Tests (alle Layer)
+```
