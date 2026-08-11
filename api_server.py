@@ -14,6 +14,8 @@ Endpoints:
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
 import json
@@ -29,6 +31,8 @@ import bio_formats
 
 MEMORY_DIR = ROOT / "memory"
 INBOX_DIR = ROOT / "fasta_inbox"
+UI_DIR = ROOT / "13_ui" / "static"
+BRAINSTORM_DIR = ROOT / "reports" / "brainstorm_v6"
 
 app = FastAPI(title="Organic Organism API", version="2.0.0")
 
@@ -122,6 +126,47 @@ def history():
 def inbox():
     files = sorted(INBOX_DIR.glob("*.fa*"))
     return {"count": len(files), "files": [f.name for f in files]}
+
+
+# ---------------------------------------------------------------------------
+# LAYER 13 UI — Responsive Evolution Console
+# ---------------------------------------------------------------------------
+@app.get("/ui")
+def ui():
+    """Responsive, auto-skalierende UI (horizontal/vertikal)."""
+    index = UI_DIR / "index.html"
+    if not index.exists():
+        raise HTTPException(404, "UI not built")
+    return FileResponse(index)
+
+
+@app.get("/brainstorm/top100.json")
+def brainstorm_top100():
+    f = BRAINSTORM_DIR / "top100.json"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse(json.loads(f.read_text()))
+
+
+@app.get("/brainstorm/mindmap_tree.json")
+def brainstorm_tree():
+    f = BRAINSTORM_DIR / "mindmap_tree.json"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse(json.loads(f.read_text()))
+
+
+@app.get("/brainstorm/mindmap")
+def brainstorm_mindmap():
+    """Menschenlesbares Mindmap (Markdown)."""
+    f = BRAINSTORM_DIR / "mindmap.md"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse({"mindmap": f.read_text()})
+
+
+if UI_DIR.exists():
+    app.mount("/ui/static", StaticFiles(directory=UI_DIR), name="ui-static")
 
 
 if __name__ == "__main__":

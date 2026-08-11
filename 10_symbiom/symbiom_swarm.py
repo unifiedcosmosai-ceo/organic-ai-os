@@ -11,10 +11,9 @@ import ast
 import json
 import random
 import re
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, List, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,6 +26,7 @@ class Symbiont:
     code: str
     fitness: float = 0.0
     discoveries: List[str] = field(default_factory=list)
+    lineage: List[str] = field(default_factory=list)
 
     def to_prompt(self):
         return f"# {self.name} [{self.speciality}] fit={self.fitness:.3f}\n{self.code}"

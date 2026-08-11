@@ -1,4 +1,4 @@
-.PHONY: all test test-api test-regression test-mcts test-skills test-budget test-spec test-tools coverage run parse evolve-now report clean
+.PHONY: all test test-loop test-regression test-mcts test-skills test-budget test-spec test-tools coverage run parse evolve-now report clean
 
 # Automatische Unit- + Regressions-Tests (CI-Einstieg)
 all: test
@@ -6,6 +6,14 @@ all: test
 # Lokale Tests: pytest (inkl. Regressions-Suite)
 test:
 	python3 -m pytest tests/ -v
+
+# Automatischer Regressions-Loop: Compile + Weak-Code-Audit + volle Suite
+test-loop:
+	python3 tools/regression_loop.py --loop 3
+
+# Automatischer Regressions-Loop mit auto-fix (bare except -> Exception)
+fix:
+	python3 tools/regression_loop.py --fix --loop 3
 
 # Nur die Regressions-Suite (schnell)
 test-regression:

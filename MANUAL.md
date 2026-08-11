@@ -494,3 +494,98 @@ Zusammenfassung (Calls, Failed, Verify).
 python -m pytest tests/test_tool_registry.py -v   # 18 Tests
 make test                                         # 101 Tests (alle Layer)
 ```
+
+## 17. Practical Co-Evolution (v5 Phase 6)
+
+Die naechtliche Evolution koppelt jetzt echt an Layer 09/10 (Prompt↔Code):
+
+```bash
+python app.py evolve-now                # Nightly + Co-Evolution (default)
+python app.py evolve-now --no-coevolve  # nur Code-Evolution
+```
+
+### Was passiert?
+
+1. `NightlyEvolution.run_nightly(coevolve=True)` laeuft zuerst die normale
+   Code-Evolution auf den echten Failure-Tests.
+2. Danach startet `_run_coevolution()` eine Prompt↔Code-Co-Evolution
+   (`co_evolution.evolve`) mit denselben Tests.
+3. Ergebnisse landen im Memory: `prompt_hint` (bester Prompt als Inspiration)
+   und `coevolution` (best_prompt, co_score) in `memory/organism_memory.json`.
+
+`co_evolution.evolve(rounds, swarm_generations, pop_per_species, tests=None)`
+akzeptiert eigene Testsets - die naechtliche Evolution gibt ihre
+Failure-Tests weiter (echter Selektionsdruck statt Defaults).
+
+### Tests
+
+```bash
+python -m pytest tests/test_practical_coevolution.py -v   # 8 Tests
+make test                                                 # 109 Tests (alle Layer)
+```
+
+## 18. Layer 13: UI + MCTS-Idea-Forest (v6)
+
+Ein 3×3 Monte-Carlo-Tree-Wald generiert 400 produktive Ideen fuer das
+naechste Release (Top 100 je Kategorie):
+
+```
+Achse:  core | data | ops        (Ideen-Domaine)
+Skala:  atomic | component | system
+→ 9 Baeume, UCB1, Operatoren: merge/specialize/cross/category
+```
+
+### CLI
+
+```bash
+python app.py brainstorm --iterations 400 --seed 42
+# → reports/brainstorm_v6/top100.json   (Top 100 x 4 Kategorien)
+# → reports/brainstorm_v6/mindmap.md    (Zeilen-Mindmap)
+# → reports/brainstorm_v6/mindmap.mmd   (Mermaid-Mindmap)
+# → reports/brainstorm_v6/mindmap.html  (interaktiv, pan/zoom, Tooltips)
+# → reports/brainstorm_v6/mindmap_tree.json
+```
+
+### UI & API
+
+```bash
+python app.py serve           # FastAPI
+# UI:      http://localhost:8000/ui
+# JSON:    http://localhost:8000/brainstorm/top100.json
+# Baum:    http://localhost:8000/brainstorm/mindmap_tree.json
+# Mindmap: http://localhost:8000/brainstorm/mindmap
+```
+
+Die UI (`13_ui/static/index.html`) ist responsive und passt sich der
+Bildschirmbreite an (horizontal/vertikal).
+
+### Tests
+
+```bash
+python -m pytest tests/test_ui_and_brainstorm.py -v   # 11 Tests
+make test                                             # 120 Tests (alle Layer)
+```
+
+## 19. Regression-Loop & Code-Qualitaet (v6)
+
+Automatischer Qualitaets-Zyklus (manuell oder CI):
+
+```bash
+make test-loop        # 1 Runde: COMPILE → AUDIT → TEST → REPORT
+make fix              # einfache Audits automatisch reparieren
+python3 tools/regression_loop.py --loop 5   # N Runden bis Konvergenz
+```
+
+Der Loop (`tools/regression_loop.py`):
+- **COMPILE** — alle `.py`-Dateien syntaktisch pruefen.
+- **AUDIT** — Schwachstellen finden: bare `except:`, silent `pass`,
+  ungenutzte Imports, doppelte Funktionsdefinitionen/Dateien.
+- **TEST** — volle pytest-Suite (inkl. Regression + UI + API).
+- **REPORT** — Exit-Code 0 nur wenn alles gruen; `--fix` behebt einfache
+  Befunde in-place.
+
+### Tests
+
+```bash
+make test   # 122 Tests (alle Layer inkl. core + 13_ui)
+```

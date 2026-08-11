@@ -13,7 +13,7 @@ import hashlib
 import json
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
@@ -34,6 +34,30 @@ class ReplayEntry:
 
 def _hash(obj) -> str:
     return hashlib.sha256(json.dumps(obj, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+def _seed_parse_fasta(use_splitlines=False) -> str:
+    """Standard parse_fasta Saatcode fuer MCTS/Skill/Budget Tools."""
+    split = "text.splitlines()" if use_splitlines else 'text.split("\\n")'
+    return f"""def parse_fasta(text):
+    records = {{}}
+    header = ""
+    for line in {split}:
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+
+
+def _t_basic_parser(ns) -> bool:
+    """parse_fasta Basistest: 2 Records."""
+    try:
+        return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+    except Exception:
+        return False
 
 
 class ToolRegistry:
@@ -149,26 +173,9 @@ def mcts_evolve_tool(iterations: int = 60) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     best = engine.run_mcts(Strand(name="v5_adam", code=seed), FitnessEvaluator,
                            tests, iterations=iterations)
     return {"champion": best.strand.name, "fitness": round(best.strand.fitness, 4),
@@ -181,26 +188,9 @@ def skill_library_tool(iterations: int = 60) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     root = engine.run_mcts(Strand(name="adam", code=seed), FitnessEvaluator, tests,
                            iterations=iterations)
     lib = SkillLibrary.load(Path("memory") / "skill_library.json")
@@ -220,26 +210,9 @@ def budget_tool(iterations: int = 40, token_budget: float = 300.0) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     with BudgetGuard(token_budget=token_budget, time_budget=30,
                      iteration_budget=iterations, soft=True) as guard:
         root, snap = budgeted_mcts(engine, Strand(name="adam", code=seed),
