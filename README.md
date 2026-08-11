@@ -122,6 +122,17 @@ python app.py mcts-evolve --iterations 150 --tests adversarial
 make test      # 47 Tests (37 v4 + 10 v5)
 ```
 
+### v5 Phase 2 (Skill / Tactic Library)
+
+- **📚 Gated Library** — verifizierte MCTS-Rollouts werden permanent wiederverwendbar (`memory/skill_library.json`); Aufnahme nur bei Verifikation + Neuartigkeit (AST-normalisiert)
+- **🩹 Failure-Library** — fehlgeschlagene Kandidaten tragen Fehlersignaturen zur Vermeidung im naechsten Run
+- **🧭 Semantisches Retrieval** — `retrieve(specialty)` rankt spezialisierte Skills zuerst
+
+```bash
+python app.py skills --iterations 80 --min-visits 2 --list
+make test      # 59 Tests (47 v5-P1 + 12 v5-P2)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat

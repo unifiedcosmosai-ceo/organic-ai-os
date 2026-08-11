@@ -216,6 +216,64 @@ def cmd_mcts_evolve(args):
         print("Adversarial-Tests erhalten: Grenzfaelle (blank lines, Duplikat-Header, lowercase) sind Teil der Bewertung.")
 
 
+def cmd_skills(args):
+    """MCTS-Rollouts → verifizierte Skills (v5, Layer 11)."""
+    sys.path.insert(0, "11_evolution")
+    mcts = __import__("11_evolution.mcts_evolver", fromlist=["MCTSEvolution", "Strand"])
+    evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
+    skills_mod = __import__("11_evolution.skill_library", fromlist=["SkillLibrary"])
+
+    seed = """def parse_fasta(text):
+    records = {}
+    header = ""
+    for line in text.split("\\n"):
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+    if args.seed_code:
+        seed = Path(args.seed_code).read_text()
+
+    def t_basic(ns):
+        try:
+            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+        except Exception:
+            return False
+
+    def t_messy(ns):
+        try:
+            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
+            return len(r) == 2 and all(" " not in v for v in r.values())
+        except Exception:
+            return False
+
+    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
+    testset = engine.adversarial_tests(tests)
+    root = engine.run_mcts(mcts.Strand(name="v5_adam", code=seed),
+                           evo_mod.FitnessEvaluator, testset, iterations=args.iterations)
+
+    lib_path = Path("memory") / "skill_library.json"
+    lib = skills_mod.SkillLibrary.load(lib_path)
+    before = len(lib.skills)
+    added = 0
+    for t in skills_mod.SkillLibrary.extract_from_mcts(root, min_visits=args.min_visits):
+        verified, fit = lib.verify(t, evo_mod.FitnessEvaluator, testset)
+        t.verified = verified
+        if lib.add(t):
+            added += 1
+            print(f"➕ Skill: {t.name} fit={fit:.3f}")
+    lib.save(lib_path)
+    print(f"\n📚 Bibliothek: {before} → {len(lib.skills)} Skills (neu: {added}) → {lib_path}")
+    if args.list:
+        print("\nTop-Skills:")
+        for i, s in enumerate(lib.retrieve(limit=5), 1):
+            print(f"  {i}. {s.name} fit={s.fitness:.3f} source={s.source} gen={s.generation}")
+
+
 def run_organism(port: int = 8000):
     """Startet Watcher + naechtliche Evolution + API parallel."""
     import autonomous_organism as ao
@@ -273,6 +331,12 @@ def main():
                         help="Testbasis (base = nur Kern-Tests, adversarial = + Grenzfaelle)")
     mcts_p.add_argument("--seed-code", default=None, help="Pfad zu Startcode (default: eingebauter parse_fasta-Saatcode)")
 
+    skills_p = sub.add_parser("skills", help="MCTS-Rollouts → Skill/Tactic-Bibliothek (v5)")
+    skills_p.add_argument("--iterations", type=int, default=80, help="MCTS-Rollouts")
+    skills_p.add_argument("--min-visits", type=int, default=2, help="Minimum an Rollout-Bestaetigungen")
+    skills_p.add_argument("--list", action="store_true", help="Top-Skills nach dem Lauf anzeigen")
+    skills_p.add_argument("--seed-code", default=None, help="Pfad zu Startcode")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -291,6 +355,8 @@ def main():
         cmd_report(args)
     elif args.command == "mcts-evolve":
         cmd_mcts_evolve(args)
+    elif args.command == "skills":
+        cmd_skills(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app
