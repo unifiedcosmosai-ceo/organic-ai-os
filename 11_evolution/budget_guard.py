@@ -19,7 +19,7 @@ Design:
 
 import time
 from dataclasses import dataclass
-from typing import Callable, Generator, Optional
+from typing import Callable, Optional
 
 
 class BudgetExceeded(Exception):

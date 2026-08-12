@@ -1,5 +1,4 @@
 """Tests fuer den Budget-Guard (v5, Layer 11)."""
-import sys
 import time
 
 from budget_guard import (

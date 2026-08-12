@@ -13,8 +13,10 @@ Endpoints:
   GET  /inbox               Dateien im Watch-Ordner
 """
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 from pathlib import Path
 import json
 import time
@@ -24,15 +26,39 @@ import sys
 
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "13_ui"))
+sys.path.insert(0, str(ROOT / "09_neuro"))
 
 import bio_formats
+import validation_schema
+import dashboard
+import observability
+import webhook_out
+import provenance
 
 MEMORY_DIR = ROOT / "memory"
 INBOX_DIR = ROOT / "fasta_inbox"
+UI_DIR = ROOT / "13_ui" / "static"
+BRAINSTORM_DIR = ROOT / "reports" / "brainstorm_v6"
 
 app = FastAPI(title="Organic Organism API", version="2.0.0")
 
 _boot_time = time.time()
+
+_metrics_registry = observability.MetricsRegistry()
+
+
+@app.middleware("http")
+async def _observe_latency(request: Request, call_next):
+    start = time.monotonic()
+    ok = True
+    try:
+        response = await call_next(request)
+        ok = response.status_code < 500
+    finally:
+        _metrics_registry.record(request.url.path,
+                                 (time.monotonic() - start) * 1000, ok)
+    return response
 
 
 def _read_memory() -> dict:
@@ -63,6 +89,11 @@ class ParseRequest(BaseModel):
     filename: str = "api_input"
 
 
+class ValidateRequest(BaseModel):
+    content: str
+    schema_name: str = Field(default="auto", alias="schema")
+
+
 @app.post("/parse")
 def parse(req: ParseRequest):
     """Parst Sequenzdaten: body = rohe FASTA/FASTQ Text."""
@@ -71,6 +102,18 @@ def parse(req: ParseRequest):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"parse failed: {e}")
     return {"format": fmt, "records": len(records), "filename": req.filename, "parsed": records}
+
+
+@app.post("/validate")
+def validate(req: ValidateRequest):
+    """Validiert geparste Records gegen ein Schema (FASTA/FASTQ, v6)."""
+    try:
+        report = validation_schema.validate_content(req.content, schema=req.schema_name)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"validate failed: {e}")
+    return report.to_dict()
 
 
 @app.get("/stats")
@@ -122,6 +165,114 @@ def history():
 def inbox():
     files = sorted(INBOX_DIR.glob("*.fa*"))
     return {"count": len(files), "files": [f.name for f in files]}
+
+
+# ---------------------------------------------------------------------------
+# LAYER 13 UI — Responsive Evolution Console
+# ---------------------------------------------------------------------------
+@app.get("/ui")
+def ui():
+    """Responsive, auto-skalierende UI (horizontal/vertikal)."""
+    index = UI_DIR / "index.html"
+    if not index.exists():
+        raise HTTPException(404, "UI not built")
+    return FileResponse(index)
+
+
+@app.get("/brainstorm/top100.json")
+def brainstorm_top100():
+    f = BRAINSTORM_DIR / "top100.json"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse(json.loads(f.read_text()))
+
+
+@app.get("/brainstorm/mindmap_tree.json")
+def brainstorm_tree():
+    f = BRAINSTORM_DIR / "mindmap_tree.json"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse(json.loads(f.read_text()))
+
+
+@app.get("/brainstorm/mindmap")
+def brainstorm_mindmap():
+    """Menschenlesbares Mindmap (Markdown)."""
+    f = BRAINSTORM_DIR / "mindmap.md"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse({"mindmap": f.read_text()})
+
+
+# ---------------------------------------------------------------------------
+# v6 REST-DASHBOARD — KPI-Tiles + Fitness-Historie + Fruehwarnung
+# ---------------------------------------------------------------------------
+@app.get("/dashboard")
+def dashboard_page():
+    """Self-contained Dashboard (HTML)."""
+    data = dashboard.build_dashboard_data(str(MEMORY_DIR))
+    return HTMLResponse(dashboard.render_dashboard_html(data))
+
+
+@app.get("/dashboard/summary")
+def dashboard_summary():
+    """Dashboard-Summary als JSON (alle KPIs + Verlaeufe)."""
+    return JSONResponse(dashboard.build_dashboard_data(str(MEMORY_DIR)))
+
+
+@app.get("/dashboard/guard")
+def dashboard_guard():
+    """Zustand der Fitness-Fruehwarnung (baseline, alarms, history)."""
+    guard_file = MEMORY_DIR / "fitness_guard.json"
+    data = json.loads(guard_file.read_text()) if guard_file.exists() else {}
+    return JSONResponse({"guard": data})
+
+
+# ---------------------------------------------------------------------------
+# v6 PHASE B OPS + TRACEABILITY — Metriken, Webhook, Provenienz
+# ---------------------------------------------------------------------------
+@app.get("/metrics")
+def metrics():
+    """Endpoint-Latenz/Fehler (Observability, v6)."""
+    return JSONResponse(_metrics_registry.summary())
+
+
+@app.get("/webhooks")
+def webhooks():
+    """Status der Webhook-Out Konfiguration (v6)."""
+    return JSONResponse({
+        "hooks": webhook_out.load_config(MEMORY_DIR / "webhooks.json"),
+        "sent": len(webhook_out.WebhookDispatcher().sent),
+    })
+
+
+class WebhookTestRequest(BaseModel):
+    event: str = "test"
+    payload: dict = {}
+
+
+@app.post("/webhooks/test")
+def webhook_test(req: WebhookTestRequest):
+    """Feuert ein Event gegen konfigurierte Hooks (v6)."""
+    dispatch = webhook_out.WebhookDispatcher()
+    return JSONResponse(dispatch.fire(req.event, req.payload))
+
+
+@app.get("/provenance")
+def provenance_endpoint(strategy: str = None, name: str = None, last: int = 50):
+    """mRNA-Provenienz: Mutations-Log der Prompt-Evolution (v6)."""
+    tracker = provenance.ProvenanceTracker()
+    tracker.load()
+    return JSONResponse({
+        "summary": tracker.summary(),
+        "events": [e.to_dict() for e in tracker.query(name=name,
+                                                      strategy=strategy,
+                                                      last=last)],
+    })
+
+
+if UI_DIR.exists():
+    app.mount("/ui/static", StaticFiles(directory=UI_DIR), name="ui-static")
 
 
 if __name__ == "__main__":

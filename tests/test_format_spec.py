@@ -1,7 +1,6 @@
 """Tests fuer das Format-Spec-Schema (v5, Layer 03)."""
 import json
 
-import format_spec
 from format_spec import (
     FormatSpec, default_specs, derive_parser, detect_spec, list_specs,
     parse_file_spec, specs_to_json,

@@ -55,12 +55,11 @@ def _normalize(code: str) -> str:
     """Dedup-Key: whitespace- und kommentararm, nur erste 300 Zeichen."""
     try:
         tree = ast.parse(code)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.stmt) and not isinstance(node, (ast.FunctionDef, ast.Import, ast.ImportFrom)):
-                pass
         code = ast.unparse(tree)
     except Exception:
-        pass
+        # unparse fehlgeschlagen: auf rohen Kompakt-Key zurueckfallen
+        return "".join(
+            re.findall(r"[a-zA-Z_]\w*", code.replace("#", " ")))[:300]
     return re.sub(r"\s+", "", code)[:300]
 
 

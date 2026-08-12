@@ -9,7 +9,6 @@ Callback-Signatur: on_file(path: Path, event: str)
 """
 
 import threading
-import time
 from pathlib import Path
 
 from organics_log import get_logger

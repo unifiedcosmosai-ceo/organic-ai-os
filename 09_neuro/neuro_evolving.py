@@ -1,6 +1,13 @@
-import random, re, json, ast
+import random, re, ast
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List
+
+try:
+    from provenance import get_provenance as _get_prov
+    from cortex_persist import snapshot_population as _snapshot_pop
+    _NEURO_OBS = True
+except Exception:
+    _NEURO_OBS = False
 
 @dataclass
 class PromptStrand:
@@ -35,6 +42,11 @@ class NeuroMutator:
                 template+='\nBeispiel: Input ">a\\nATGC" -> Output {"a":"ATGC"}'
         child=PromptStrand(name=f"{strand.name}_g{strand.generation+1}", prompt_template=template.strip(), generation=strand.generation+1, lineage=strand.lineage+[strand.name])
         child.tokens=len(child.prompt_template.split())
+        if _NEURO_OBS:
+            _get_prov().record(parent=strand.name, child=child.name, strategy=strategy,
+                               generation=strand.generation,
+                               fitness_before=strand.fitness,
+                               prompt_snippet=template[:80])
         return child
 
 class NeuroCortex:
@@ -67,7 +79,7 @@ class NeuroCortex:
         code=self.execute_prompt(strand)
         try:
             ast.parse(code)
-        except:
+        except Exception:
             strand.fitness=0.0
             return 0.0
         score=0
@@ -78,7 +90,7 @@ class NeuroCortex:
                 exec(code, {}, ns)
                 score+=(1.0 if fn(ns) else 0.0)*w
                 total+=w
-            except:
+            except Exception:
                 total+=w
         eff=score/(strand.tokens+1)*5 if strand.tokens else 0
         strand.fitness=(score/total if total else 0)+min(0.1,eff)
@@ -100,6 +112,8 @@ class NeuroCortex:
             print(f' Gen {gen}: best={best.name} fit={best.fitness:.3f} tok={best.tokens}')
             print(f'   Prompt: {best.prompt_template[:90]}...')
             self.history.append([(p.name,p.fitness,p.generation) for p in pop])
+            if _NEURO_OBS:
+                _snapshot_pop(pop, gen)
             if best.fitness>=0.95:
                 break
             next_gen=[best]
@@ -123,7 +137,7 @@ def test_basic(ns):
     try:
         r=ns['parse_fasta']('>a\nATGC\n>b\nGG')
         return len(r)==2
-    except:
+    except Exception:
         return False
 
 def test_robust(ns):
@@ -131,7 +145,7 @@ def test_robust(ns):
     try:
         r=ns['parse_fasta']('>a messy\n  atgc  \n\n>b\nGG')
         return len(r)==2 and all(' ' not in v for v in r.values())
-    except:
+    except Exception:
         return False
 
 if __name__=='__main__':

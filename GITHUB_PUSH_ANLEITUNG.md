@@ -7,7 +7,7 @@ Dein Repo ist bereit: dieser Ordner (`organic-ai-os`).
 
 1. Gehe zu https://github.com/new
 2. Repo Name: organic-ai-os
-3. Description: 🧬 12-Layer Organic AI OS - Self-evolving FASTA parser with LLM mutation
+3. Description: 🧬 13-Layer Organic AI OS - Self-evolving FASTA parser with LLM mutation (v6: UI + MCTS-Idea-Forest)
 4. Public, NICHT mit README initialisieren
 5. Create
 
@@ -20,7 +20,7 @@ cd organic_ai_platform
 
 git init
 git add .
-git commit -m "🧬 Initial commit: 12-Layer Organic AI OS"
+git commit -m "🧬 Initial commit: 13-Layer Organic AI OS"
 
 # Ersetze USERNAME
 git remote add origin https://github.com/USERNAME/organic-ai-os.git
@@ -55,6 +55,6 @@ Repository-Hinweise:
 
 Füge in GitHub Repo Settings:
 - Topics: bioinformatics, ai, evolution, llm, self-evolving, fasta, python
-- Description: 🧬 Organic AI OS - Code as DNA, Prompts as mRNA, LLM as Ribosome. Autonomous FASTA parser that evolves nightly at 02:00.
+- Description: 🧬 Organic AI OS - Code as DNA, Prompts as mRNA, LLM as Ribosome. Autonomous FASTA parser that evolves nightly at 02:00. v6: 13 Layer, UI + MCTS-Idea-Forest.
 
 Dein Tarball: /mnt/data/organic_ai_platform.tar.gz (54.9 KB)

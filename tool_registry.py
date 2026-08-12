@@ -13,7 +13,7 @@ import hashlib
 import json
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
@@ -34,6 +34,30 @@ class ReplayEntry:
 
 def _hash(obj) -> str:
     return hashlib.sha256(json.dumps(obj, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+def _seed_parse_fasta(use_splitlines=False) -> str:
+    """Standard parse_fasta Saatcode fuer MCTS/Skill/Budget Tools."""
+    split = "text.splitlines()" if use_splitlines else 'text.split("\\n")'
+    return f"""def parse_fasta(text):
+    records = {{}}
+    header = ""
+    for line in {split}:
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+
+
+def _t_basic_parser(ns) -> bool:
+    """parse_fasta Basistest: 2 Records."""
+    try:
+        return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+    except Exception:
+        return False
 
 
 class ToolRegistry:
@@ -149,26 +173,9 @@ def mcts_evolve_tool(iterations: int = 60) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     best = engine.run_mcts(Strand(name="v5_adam", code=seed), FitnessEvaluator,
                            tests, iterations=iterations)
     return {"champion": best.strand.name, "fitness": round(best.strand.fitness, 4),
@@ -181,26 +188,9 @@ def skill_library_tool(iterations: int = 60) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     root = engine.run_mcts(Strand(name="adam", code=seed), FitnessEvaluator, tests,
                            iterations=iterations)
     lib = SkillLibrary.load(Path("memory") / "skill_library.json")
@@ -220,26 +210,9 @@ def budget_tool(iterations: int = 40, token_budget: float = 300.0) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     with BudgetGuard(token_budget=token_budget, time_budget=30,
                      iteration_budget=iterations, soft=True) as guard:
         root, snap = budgeted_mcts(engine, Strand(name="adam", code=seed),
@@ -256,6 +229,80 @@ def specs_tool() -> dict:
                        "columns": len(specs[n].columns)} for n in list_specs()]}
 
 
+def validate_tool(filepath: str, schema: str = "auto") -> dict:
+    import validation_schema
+    content = Path(filepath).read_text(errors="ignore")
+    report = validation_schema.validate_content(content, schema=schema)
+    return report.to_dict()
+
+
+def fitness_guard_tool(fitness: float, baseline: float = None,
+                       name: str = "candidate") -> dict:
+    sys.path.insert(0, "11_evolution")
+    from fitness_guard import FitnessGuard
+    guard = FitnessGuard()
+    guard.load()
+    res = guard.check_candidate(name=name, fitness=fitness, baseline=baseline)
+    return {"decision": res["decision"], "reason": res["reason"],
+            "fitness": res["fitness"], "baseline": res["baseline"],
+            "alarms": guard.alarms}
+
+
+def dashboard_tool() -> dict:
+    sys.path.insert(0, "13_ui")
+    import dashboard
+    return dashboard.build_dashboard_data()
+
+
+def stream_tool(filepath: str, head: int = 5) -> dict:
+    import streaming_parser
+    records = streaming_parser.stream_head(filepath, n=head)
+    sample = [{"header": h,
+               "seq": (r["seq"][:40] if isinstance(r, dict) else r[:40]),
+               "qual": (r.get("qual", "")[:20] if isinstance(r, dict) else "")}
+              for h, r in records]
+    return {"records": len(records), "head": sample}
+
+
+def kmer_tool(filepath: str, k: int = 5, top: int = 10) -> dict:
+    import kmer_index
+    idx = kmer_index.index_fasta(filepath, k=k)
+    return {"k": k, "records": len(idx.per_record),
+            "vocabulary": idx.vocabulary(), "top": idx.top_kmers(top)}
+
+
+def webhook_tool(event: str = "test", payload: dict = None, url: str = None) -> dict:
+    import webhook_out
+    hooks = webhook_out.load_config()
+    if url:
+        # transienter Hook fuer diesen einen Test-Fire (kein Persistieren)
+        hooks = hooks + [{"url": url, "events": [event], "enabled": True}]
+    return webhook_out.WebhookDispatcher(hooks).fire(event,
+                                                     payload or {"source": "tool"})
+
+
+def metrics_tool() -> dict:
+    import observability
+    return observability.MetricsRegistry().load().summary()
+
+
+def provenance_tool(name: str = None, last: int = 20) -> dict:
+    sys.path.insert(0, "09_neuro")
+    import provenance
+    tracker = provenance.ProvenanceTracker()
+    tracker.load()
+    return {"summary": tracker.summary(),
+            "events": [e.to_dict() for e in tracker.query(name=name, last=last)]}
+
+
+def vote_tool() -> dict:
+    sys.path.insert(0, "10_symbiom")
+    import voting
+    results = {"test_basic": [True, True, False],
+               "test_robust": [True, True, True]}
+    return voting.swarm_vote(results)
+
+
 def make_agent(tools: Optional[Dict[str, Callable]] = None,
                replay_path: Optional[Path] = None, seed: Optional[int] = None) -> ToolRegistry:
     """Fabrik: Agent mit Standard-Tools + Replay-Log."""
@@ -268,6 +315,15 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "skill_library": skill_library_tool,
         "budget": budget_tool,
         "specs": specs_tool,
+        "validate": validate_tool,
+        "fitness_guard": fitness_guard_tool,
+        "dashboard": dashboard_tool,
+        "stream": stream_tool,
+        "kmers": kmer_tool,
+        "webhook": webhook_tool,
+        "metrics": metrics_tool,
+        "provenance": provenance_tool,
+        "vote": vote_tool,
     }
     if tools:
         default.update(tools)
@@ -279,6 +335,15 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "skill_library": "MCTS-Rollouts -> verifizierte Skills",
         "budget": "Budget-begrenzter MCTS-Run",
         "specs": "Registrierte Format-Specs",
+        "validate": "Records gegen Schema validieren (FASTA/FASTQ)",
+        "fitness_guard": "Kandidaten gegen Fruehwarnung pruefen",
+        "dashboard": "Dashboard-Summary (KPI-Tiles)",
+        "stream": "Streaming-Parser: FASTA/FASTQ zeilenweise (Head)",
+        "kmers": "k-mer Index ueber Sequenzdatei",
+        "webhook": "Webhook-Out: Event feuern (Hook ggf. registrieren)",
+        "metrics": "Endpoint-Metriken (Latenz/Fehler)",
+        "provenance": "Mutations-Provenienz (mRNA-Traceback)",
+        "vote": "Schwarm-Voting (Majority-Ensemble)",
     }
     reg.register_all(default, descriptions)
     return reg

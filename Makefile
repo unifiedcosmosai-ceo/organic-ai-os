@@ -1,4 +1,4 @@
-.PHONY: all test test-api test-regression test-mcts test-skills test-budget test-spec test-tools coverage run parse evolve-now report clean
+.PHONY: all test test-loop test-regression test-mcts test-skills test-budget test-spec test-tools test-ui test-validate test-guard test-dashboard test-phase-b coverage run parse evolve-now report clean
 
 # Automatische Unit- + Regressions-Tests (CI-Einstieg)
 all: test
@@ -6,6 +6,14 @@ all: test
 # Lokale Tests: pytest (inkl. Regressions-Suite)
 test:
 	python3 -m pytest tests/ -v
+
+# Automatischer Regressions-Loop: Compile + Weak-Code-Audit + volle Suite
+test-loop:
+	python3 tools/regression_loop.py --loop 3
+
+# Automatischer Regressions-Loop mit auto-fix (bare except -> Exception)
+fix:
+	python3 tools/regression_loop.py --fix --loop 3
 
 # Nur die Regressions-Suite (schnell)
 test-regression:
@@ -34,6 +42,29 @@ test-tools:
 # Nur API-Tests
 test-api:
 	python3 -m pytest tests/test_api.py -v
+
+# Nur UI + Brainstorm-Suite (v6)
+test-ui:
+	python3 -m pytest tests/test_ui_and_brainstorm.py -v
+
+# Nur Validierungs-Schema-Suite (v6)
+test-validate:
+	python3 -m pytest tests/test_validation_schema.py -v
+
+# Nur Fitness-Fruehwarnungs-Suite (v6)
+test-guard:
+	python3 -m pytest tests/test_fitness_guard.py -v
+
+# Nur Dashboard-Suite (v6)
+test-dashboard:
+	python3 -m pytest tests/test_dashboard.py -v
+
+# Nur Phase-B-Suite (v6): Streaming, k-mer, Webhook, Observability, Traceability
+test-phase-b:
+	python3 -m pytest tests/test_streaming_parser.py tests/test_kmer_index.py \
+		tests/test_webhook_out.py tests/test_observability.py \
+		tests/test_provenance_cortex.py tests/test_swarm_voting.py \
+		tests/test_phase_b_api_tools.py -v
 
 # Coverage anzeigen
 coverage:

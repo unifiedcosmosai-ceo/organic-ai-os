@@ -1,9 +1,8 @@
 """Tests fuer die Tool-Registry + Agent-Fassade + Replay (v5, Layer 12)."""
 import json
-from pathlib import Path
 
 from tool_registry import (
-    ToolRegistry, ReplayEntry, make_agent, run_agent_workflow, _hash,
+    ToolRegistry, ReplayEntry, make_agent, run_agent_workflow,
     budget_tool, mcts_evolve_tool, parse_file_tool, parse_spec_tool,
     skill_library_tool, specs_tool, status_tool,
 )
@@ -148,7 +147,6 @@ def test_budget_tool_reports_under_budget():
 
 
 def test_skill_library_tool_accumulates(tmp_path):
-    from pathlib import Path as P
     # schiebe Library in tmp, um Test isolation zu wahren
     out = skill_library_tool(iterations=20)
     d = out["result"] if isinstance(out, dict) and "result" in out else out

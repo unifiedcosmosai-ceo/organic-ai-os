@@ -27,7 +27,6 @@ class OrganicStrand:
             return {"error": str(e), "strand": self}
 
     def mutate(self, rate=0.05):
-        import random
         # Organische Mutation: zufälliges Einfügen/Ändern
         # In echt: LLM-gestützte Mutation
         self.mutations.append(f"mut@{self.age} rate={rate}")

@@ -6,10 +6,9 @@ Beobachtet Ordner, lernt aus echten Daten, verbessert sich nachts
 Run: python autonomous_organism.py
 """
 
-import time, json, hashlib, ast, re, random, os, signal, sys
+import time, json, hashlib, ast, re, os, signal, sys
 from pathlib import Path
 from datetime import datetime, timedelta
-import threading
 from dataclasses import dataclass, field
 from typing import List, Dict
 
@@ -17,12 +16,32 @@ from organics_log import get_logger, event
 
 logger = get_logger("organism")
 
+try:
+    from webhook_out import WebhookDispatcher
+    _WEBHOOK = WebhookDispatcher()
+except Exception as e:
+    logger.warning("Webhook-Out nicht verfuegbar: %s", e)
+    _WEBHOOK = None
+
+def _fire_webhook(event_name, payload):
+    if _WEBHOOK is not None:
+        _WEBHOOK.fire(event_name, payload)
+
+# Gemeinsamer Auswertungs-Helfer: testet Code gegen eine Testliste
+def _score_code(code, tests):
+    score = 0.0
+    for fn, w in tests:
+        try:
+            ns = {}
+            exec(code, {}, ns)
+            score += (1.0 if fn(ns) else 0.0) * w
+        except Exception:
+            pass
+    return score
+
 # Import aus deinen Layern
-import sys
 sys.path.insert(0, str(Path(__file__).parent / "11_evolution"))
 sys.path.insert(0, str(Path(__file__).parent / "09_neuro"))
-from organics_log import get_logger
-logger = get_logger("organism")
 try:
     from llm_evolver import Strand, FitnessEvaluator, LLMMutator, EvolutionEngine
     logger.info("Evolution Engine geladen")
@@ -36,18 +55,19 @@ except Exception as e:
         def evaluate(code, tests):
             import ast
             try: ast.parse(code)
-            except: return 0.0
+            except Exception:
+                return 0.0
             score=0
             for fn,w in tests:
                 try:
                     ns={}; exec(code, {}, ns)
                     score+=(1.0 if fn(ns) else 0.0)*w
-                except: pass
+                except Exception:
+                    pass
             return score
     class LLMMutator:
         def __init__(self, provider="fallback"): self.provider=provider
         def mutate(self, strand, strategy=None):
-            import random, re
             code=strand.code
             if "strip()" not in code:
                 code=code.replace("line", "line.strip()")
@@ -77,6 +97,11 @@ except Exception as e:
                 self.population=next_gen
             self.population.sort(key=lambda x: x.fitness, reverse=True)
             return self.population[0]
+
+
+# Fitness-Fruehwarnung (v6): stoppt Regression vor Promotion
+sys.path.insert(0, str(Path(__file__).parent / "11_evolution"))
+from fitness_guard import FitnessGuard
 
 
 WATCH_DIR = Path(__file__).parent / "fasta_inbox"
@@ -251,7 +276,7 @@ def parse_fasta(text):
             self.memory.data["best_strands"]["emergency_heal"] = {"code": code, "time": datetime.now().isoformat()}
             self.memory.save()
         except Exception as e:
-            event(logger, "IMMUN", f"Heilung fehlgeschlagen: {e}", level=logger.error)
+            logger.error(f"Heilung fehlgeschlagen: {e}")
 
 # --- NÄCHTLICHE EVOLUTION ---
 class NightlyEvolution:
@@ -290,37 +315,42 @@ class NightlyEvolution:
         try:
             r=ns["parse_fasta"](">a\nATGC\n>b\nGG")
             return len(r)==2
-        except: return False
+        except Exception:
+            return False
     
     def _test_robust(self, ns):
         if "parse_fasta" not in ns: return False
         try:
             r=ns["parse_fasta"](">a messy\n  atgc  \n\n>b\nGG")
             return len(r)==2 and all(" " not in v for v in r.values())
-        except: return False
+        except Exception:
+            return False
     
     def _test_lowercase(self, ns):
         if "parse_fasta" not in ns: return False
         try:
             r=ns["parse_fasta"](">a\natgc\n")
             return "ATGC" in "".join(r.values()).upper()
-        except: return False
+        except Exception:
+            return False
     
     def _test_spaces(self, ns):
         if "parse_fasta" not in ns: return False
         try:
             r=ns["parse_fasta"](">a\nAT GC AT GC\n")
             return "ATGCATGC" in "".join(r.values()).replace(" ","")
-        except: return False
+        except Exception:
+            return False
     
     def _test_uniprot(self, ns):
         if "parse_fasta" not in ns: return False
         try:
             r=ns["parse_fasta"](">sp|P69905|HBA_HUMAN\nATGC\n")
             return len(r)==1 and "P69905" in list(r.keys())[0]
-        except: return False
+        except Exception:
+            return False
     
-    def run_nightly(self):
+    def run_nightly(self, coevolve=True):
         event(logger, "EVOLUTION", f"Naechtliche Evolution {datetime.now()}")
         event(logger, "EVOLUTION", f"Failures in Memory: {len(self.memory.data['failures'])}")
         
@@ -341,23 +371,24 @@ class NightlyEvolution:
             
             # Speichere wenn besser
             # Teste gegen alten
-            def eval_code(code):
-                score=0
-                for fn,w in tests:
-                    try:
-                        ns={}
-                        exec(code, {}, ns)
-                        score+= (1.0 if fn(ns) else 0.0)*w
-                    except:
-                        pass
-                return score
-            
-            old_score = eval_code(current_code)
-            new_score = eval_code(winner.code)
+            old_score = _score_code(current_code, tests)
+            new_score = _score_code(winner.code, tests)
             
             event(logger, "EVOLUTION", f"Old Score {old_score:.3f} vs New {new_score:.3f}")
-            
-            if new_score >= old_score:
+
+            guard = FitnessGuard(path=MEMORY_DIR / "fitness_guard.json")
+            guard.load()
+            verdict = guard.check_candidate(name=winner.name, fitness=new_score,
+                                            baseline=old_score)
+            event(logger, "EVOLUTION",
+                  f"FRUEHWARNUNG {verdict['decision']} ({verdict['reason']}) "
+                  f"new={new_score:.3f} base={old_score:.3f}")
+            _fire_webhook("evolution", {"name": winner.name,
+                                        "fitness": round(new_score, 3),
+                                        "baseline": round(old_score, 3),
+                                        "decision": verdict["decision"]})
+
+            if new_score >= old_score and verdict["decision"] == "promote":
                 (MEMORY_DIR / "best_parser.py").write_text(winner.code)
                 (MEMORY_DIR / f"parser_gen_{self.memory.data['evolution_count']}.py").write_text(winner.code)
                 self.watcher.active_parser_code = winner.code
@@ -371,32 +402,70 @@ class NightlyEvolution:
                 self._save_hall_of_fame(engine, tests)
                 self.memory.save()
                 event(logger, "EVOLUTION", f"Neuer Parser übernommen - Evolution {self.memory.data['evolution_count']}")
+            elif verdict["decision"] == "reject":
+                event(logger, "EVOLUTION",
+                      f"ALARM: {winner.name} verworfen - Regressionsverdacht ({verdict['reason']})",
+                      level=logger.warning)
+                _fire_webhook("alarm", {"name": winner.name,
+                                        "reason": verdict["reason"],
+                                        "fitness": round(new_score, 3)})
+                self._save_hall_of_fame(engine, tests)
             else:
                 event(logger, "EVOLUTION", "Neuer Parser schlechter - verworfen")
                 self._save_hall_of_fame(engine, tests)
                 
         except Exception as e:
-            event(logger, "EVOLUTION", f"Evolution Fehler: {e}", level=logger.error)
+            logger.error(f"Evolution Fehler: {e}")
             import traceback
             traceback.print_exc()
 
+        # Co-Evolution (v5): Prompt<->Code, persistiert prompt_hint + coevolution
+        if coevolve:
+            prev = locals().get("old_score", 0.0)
+            prev_new = locals().get("new_score", 0.0)
+            try:
+                co_score = self._run_coevolution(tests, prev, prev_new)
+            except Exception as e:
+                logger.error(f"Co-Evolution Fehler (kein Abbruch): {e}")
+
+    def _run_coevolution(self, tests, old_score, new_score):
+        """Fuehrt die Co-Evolution aus und persistiert prompt_hint/coevolution."""
+        try:
+            import sys as _s
+            for _d in ("10_symbiom", "09_neuro", "11_evolution"):
+                _p = Path(__file__).parent / _d
+                if str(_p) not in _s.path:
+                    _s.path.insert(0, str(_p))
+            from co_evolution import evolve as _coevolve
+
+            best_code, best_prompt, _ = _coevolve(
+                rounds=2, swarm_generations=2, pop_per_species=2, tests=tests)
+            if best_code.fitness > 0.5:
+                self.memory.data["prompt_hint"] = best_code.code
+                self.memory.data["coevolution"] = {
+                    "best_prompt": {"name": best_prompt.name, "fitness": best_prompt.fitness},
+                    "best_code": {"name": best_code.name, "fitness": best_code.fitness},
+                    "co_score": best_code.fitness,
+                    "time": datetime.now().isoformat(),
+                }
+                self.memory.save()
+                co_score = best_code.fitness
+                event(logger, "EVOLUTION",
+                      f"CO-EVO Code {best_code.name} Fit={best_code.fitness:.3f} "
+                      f"Score={co_score:.3f} vs GA {old_score:.3f} Alt {new_score:.3f}")
+                return co_score
+            return max(old_score, new_score)
+        except Exception as e:
+            logger.error(f"Co-Evolution Fehler (kein Abbruch): {e}")
+            return max(old_score, new_score)
+
     def _save_hall_of_fame(self, engine, tests):
         """Persistiert die Top-N Strands der Evolution als fossile Gene.""" 
-        def eval_code(code):
-            score=0
-            for fn,w in tests:
-                try:
-                    ns={}
-                    exec(code, {}, ns)
-                    score+= (1.0 if fn(ns) else 0.0)*w
-                except:
-                    pass
-            return score
         hof = [
             {
                 "name": s.name,
                 "fitness": s.fitness,
-                "score": eval_code(s.code),
+                "score": _score_code(s.code, tests),
                 "generation": s.generation,
                 "lineage": s.lineage,
                 "code": s.code[:500],

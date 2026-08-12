@@ -6,8 +6,6 @@ Der Symbiom-Schwarm evolviert Code, dessen Fitness wiederum die Prompts trainier
 Kreislauf: prompt -> code -> fitness -> prompt-Auswahl -> besserer prompt -> ...
 """
 
-import random
-import re
 import sys
 from pathlib import Path
 
@@ -16,8 +14,8 @@ sys.path.insert(0, str(ROOT / "09_neuro"))
 sys.path.insert(0, str(ROOT / "10_symbiom"))
 sys.path.insert(0, str(ROOT / "11_evolution"))
 
-from neuro_evolving import NeuroCortex, NeuroMutator, PromptStrand
-from symbiom_swarm import SymbiomSwarm, Symbiont, _test_parse, _test_messy
+from neuro_evolving import NeuroCortex
+from symbiom_swarm import SymbiomSwarm, _test_parse, _test_messy
 
 
 def _seed_code() -> str:
@@ -40,13 +38,14 @@ def parse_fasta(text):
 """
 
 
-def evolve(rounds=4, swarm_generations=6, pop_per_species=3):
+def evolve(rounds=4, swarm_generations=6, pop_per_species=3, tests=None):
     """
     Fuehrt die co-evolutionaere Schleife aus.
+    `tests`: Liste von (fitness_fn, gewicht) — default: eingebaute parse-Tests.
     Returns: (best_code_strand, best_prompt, history)
     """
-    TS = [_test_parse, _test_messy]
-    code_tests = [(t, 0.5) for t in TS]
+    if tests is None:
+        tests = [(_test_parse, 0.6), (_test_messy, 0.4)]
 
     cortex = NeuroCortex()
     cortex.seed()
@@ -60,7 +59,7 @@ def evolve(rounds=4, swarm_generations=6, pop_per_species=3):
     for rnd in range(rounds):
         print(f"\n🌀 CO-EVOLUTION ROUND {rnd + 1}/{rounds}")
         # 1. Code-Schwarm evolvieren
-        code_winner = swarm.evolve(code_tests, generations=swarm_generations)
+        code_winner = swarm.evolve(tests, generations=swarm_generations)
         best_code = code_winner
 
         # 2. Neuro-Cortex: Prompts anhand der erzielten Fitness mutieren

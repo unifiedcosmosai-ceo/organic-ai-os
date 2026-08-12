@@ -20,6 +20,15 @@ CLI-Subcommands:
   python app.py status               Statusreport aus Memory/Hall of Fame
   python app.py coevolve             Prompt<->Code Co-Evolution starten
   python app.py report               Tagesreport erzeugen (JSON + HTML)
+  python app.py validate <file>      Records gegen Schema validieren (v6)
+  python app.py fitness-guard        Fitness-Fruehwarnung: Status/Check (v6)
+  python app.py dashboard            REST-Dashboard-Artefakte bauen (v6)
+  python app.py stream <file>        Streaming-Parser FASTA/FASTQ (v6)
+  python app.py kmers <file>         k-mer Index ueber Sequenzdatei (v6)
+  python app.py webhook              Webhook-Out: Status/Hook/Test (v6)
+  python app.py metrics              Observability: Endpoint-Metriken (v6)
+  python app.py provenance           mRNA-Provenienz: Mutations-Log (v6)
+  python app.py vote                 Schwarm-Voting Demo (v6)
   python app.py demo                 Code-Evolutions-Demo
   python app.py neuro-demo           Prompt-Evolutions-Demo
 """
@@ -38,6 +47,44 @@ for folder in ("core", "09_neuro", "11_evolution"):
 def _cfg(args):
     import config
     return config.load_config()
+
+
+def _seed_parse_fasta(use_splitlines=False):
+    """Standard parse_fasta Saatcode fuer MCTS/Skill/Budget Demos."""
+    split = "text.splitlines()" if use_splitlines else "text.split(\"\\\\n\")"
+    return f"""def parse_fasta(text):
+    records = {{}}
+    header = ""
+    for line in {split}:
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+
+
+def _basic_tests():
+    """parse_fasta Kern-Tests (t_basic + t_messy) fuer MCTS/Skill/Budget Demos."""
+    def t_basic(ns):
+        if "parse_fasta" not in ns:
+            return False
+        try:
+            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+        except Exception:
+            return False
+
+    def t_messy(ns):
+        if "parse_fasta" not in ns:
+            return False
+        try:
+            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
+            return len(r) == 2 and all(" " not in v for v in r.values())
+        except Exception:
+            return False
+
+    return [(t_basic, 0.6), (t_messy, 0.4)]
 
 
 def build_app():
@@ -125,7 +172,7 @@ def cmd_evolve_now(args):
 
     memory = ao.OrganismMemory()
     watcher = ao.FastaWatcher(memory)
-    ao.NightlyEvolution(memory, watcher).run_nightly()
+    ao.NightlyEvolution(memory, watcher).run_nightly(coevolve=not getattr(args, "no_coevolve", False))
     best = Path(ao.MEMORY_DIR) / "best_parser.py"
     if best.exists():
         print("\nAktueller Champion (best_parser.py):")
@@ -135,6 +182,172 @@ def cmd_evolve_now(args):
         if hof_path.exists():
             print("\nHall of Fame:")
             print(hof_path.read_text()[:800])
+
+
+def cmd_brainstorm(args):
+    """3x3 MCTS-Ideenwald generieren (Top 100 x 4) + Mindmap."""
+    import sys as _sys
+    from pathlib import Path as _P
+    ui_dir = _P(__file__).parent / "13_ui"
+    _sys.path.insert(0, str(ui_dir))
+
+    import mcts_idea_forest as mif
+    import mindmap as mm
+
+    out = mif.build_forest_output(seed=args.seed,
+                                  iterations_per_tree=args.iterations)
+    mm.build_files(str(out), str(out))
+    data = (out / "top100.json")
+    counts = json.loads(data.read_text())["counts"]
+    print(f"\n🧠 MCTS 3x3 Forest v6 — Seed {args.seed}, "
+          f"{args.iterations} Rollouts/Baum")
+    for cat, n in counts.items():
+        print(f"  {cat:16s}: {n}")
+    print(f"\nArtefakte -> {out}/")
+    print("  top100.json · mindmap.md · mindmap.mmd · mindmap.html · mindmap_tree.json")
+    print("UI starten:  python app.py serve  ->  http://localhost:8000/ui")
+
+
+def cmd_validate(args):
+    """Validiert eine Datei gegen das Schema (FASTA/FASTQ, v6)."""
+    import validation_schema
+
+    path = Path(args.file)
+    content = path.read_text(errors="ignore")
+    report = validation_schema.validate_content(content, schema=args.schema,
+                                                max_seq_len=args.max_len)
+    print(f"Format: {report.format} | Schema: {report.schema} "
+          f"| Records: {report.total} | ok: {report.ok} | Violations: {report.violated}")
+    for v in report.violations[:20]:
+        print(f"  ✗ {v.record}: {v.rule} — {v.detail}")
+
+
+def cmd_fitness_guard(args):
+    """Fitness-Fruehwarnung: Status oder Kandidaten-Check (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "11_evolution"))
+    from fitness_guard import FitnessGuard
+
+    guard = FitnessGuard(path=Path("memory") / "fitness_guard.json")
+    guard.load()
+    if args.check is None:
+        s = guard.summary()
+        print(f"best={s['best']} | alarms={s['alarms']} | checks={s['checks']}")
+        if s["last"]:
+            print(f"letzter Check: {s['last']}")
+        return
+    res = guard.check_candidate(name=args.name, fitness=args.check,
+                                baseline=args.baseline)
+    print(f"{res['decision'].upper()} — {res['reason']} | "
+          f"fitness={res['fitness']} baseline={res['baseline']}")
+
+
+def cmd_dashboard(args):
+    """REST-Dashboard-Artefakte bauen (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "13_ui"))
+    import dashboard
+
+    files = dashboard.build_files()
+    print(f"Dashboard -> reports/dashboard/ ({', '.join(files)})")
+    print("Live:  python app.py serve  ->  http://localhost:8000/dashboard")
+
+
+def cmd_stream(args):
+    """Streaming-Parser: FASTA/FASTQ zeilenweise lesen (v6)."""
+    import streaming_parser
+
+    if args.count:
+        n = streaming_parser.count_records(args.file)
+        print(f"Records: {n}")
+        return
+    records = streaming_parser.stream_head(args.file, n=args.head)
+    fmt, _ = streaming_parser.parse_stream(args.file)
+    print(f"Format: {fmt} | Records (head {min(args.head, len(records))}):")
+    for header, rec in records[:args.head]:
+        if isinstance(rec, dict):
+            print(f"  {header}: seq={rec['seq'][:40]} qual={rec.get('qual','')[:20]}")
+        else:
+            print(f"  {header}: {rec[:60]}")
+
+
+def cmd_kmers(args):
+    """k-mer Index ueber eine Sequenzdatei (v6)."""
+    import kmer_index
+
+    idx = kmer_index.index_fasta(args.file, k=args.k)
+    print(f"k={idx.k} | Records: {len(idx.per_record)} | "
+          f"Vocabular: {idx.vocabulary()} | Total k-mere: {idx.total()}")
+    for kmer, cnt in idx.top_kmers(args.top):
+        print(f"  {kmer}: {cnt}")
+
+
+def cmd_webhook(args):
+    """Webhook-Out: Status, Hook setzen oder Test-Event feuern (v6)."""
+    import webhook_out
+
+    if args.url:
+        hooks = webhook_out.load_config()
+        hooks.append({"url": args.url, "events": [args.event], "enabled": True})
+        webhook_out.save_config(hooks)
+        print(f"Hook registriert: {args.url} (event={args.event})")
+        return
+    dispatch = webhook_out.WebhookDispatcher()
+    if args.test:
+        entry = dispatch.fire(args.event, {"source": "cli", "test": True})
+        print(f"Event '{args.event}' -> {len(entry['results'])} Ziel(e)")
+        for r in entry["results"]:
+            print(f"  {'OK' if r['ok'] else 'FAIL'} {r['url']} status={r['status']}")
+        return
+    s = dispatch.summary()
+    print(f"Hooks: {s['hooks']} | sent: {s['sent']} | delivered_ok: {s['delivered_ok']}")
+
+
+def cmd_metrics(args):
+    """Observability: Endpoint-Metriken (v6)."""
+    import observability
+
+    reg = observability.MetricsRegistry()
+    reg.load()
+    s = reg.summary()
+    print(f"Endpoints: {len(s['endpoints'])} | Calls: {s['total_calls']} "
+          f"| Errors: {s['total_errors']}")
+    for e in s["endpoints"]:
+        print(f"  {e['endpoint']:28s} calls={e['calls']:4d} "
+              f"err={e['error_rate']:.3f} avg={e['avg_ms']:7.2f}ms")
+
+
+def cmd_provenance(args):
+    """mRNA-Provenienz: Mutations-Log ausgeben (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "09_neuro"))
+    import provenance
+
+    tracker = provenance.ProvenanceTracker()
+    tracker.load()
+    s = tracker.summary()
+    print(f"Events: {s['events']} | by_strategy: {s['by_strategy']}")
+    for e in tracker.query(name=args.name, strategy=args.strategy, last=15):
+        print(f"  {e.strategy:8s} {e.parent} -> {e.child} "
+              f"(fit={e.fitness_before:.3f}) [{e.prompt_snippet[:40]}]")
+
+
+def cmd_vote(args):
+    """Schwarm-Voting Demo: Mehrheits-Ensemble ueber Beispieldaten (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "10_symbiom"))
+    import voting
+
+    results = {"test_basic": [True, True, False],
+               "test_robust": [True, True, True],
+               "test_edges": [False, False, True]}
+    v = voting.swarm_vote(results)
+    print(f"Schwarm-Voting: bestanden {v['passed_tests']}/{v['total_tests']} "
+          f"| Konsens {v['consensus']}")
+    for name, res in v["votes"].items():
+        print(f"  {name:12s} pass={res['passed']} yes={res['yes']}/{res['total']}")
+    members = [("robust_0", 0.9, 0.5), ("fast_1", 0.7, 0.3), ("compact_2", 0.6, 0.2)]
+    print(f"Gewichtete Ensemble-Fitness: {voting.weighted_fitness(members)}")
 
 
 def cmd_coevolve(args):
@@ -169,38 +382,11 @@ def cmd_mcts_evolve(args):
     mcts = __import__("11_evolution.mcts_evolver", fromlist=["MCTSEvolution", "Strand"])
     evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.split("\\n"):
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
+    seed = _seed_parse_fasta()
     if args.seed_code:
         seed = Path(args.seed_code).read_text()
 
-    def t_basic(ns):
-        if "parse_fasta" not in ns:
-            return False
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
-    def t_messy(ns):
-        if "parse_fasta" not in ns:
-            return False
-        try:
-            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
-            return len(r) == 2 and all(" " not in v for v in r.values())
-        except Exception:
-            return False
-
-    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    tests = _basic_tests()
     if args.tests == "adversarial":
         print("🌀 Verdrahtung: adversarial tests aktiviert")
         # invers: da default Pfad ohnehin adversarial ist, nur Info
@@ -234,34 +420,11 @@ def cmd_skills(args):
     evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
     skills_mod = __import__("11_evolution.skill_library", fromlist=["SkillLibrary"])
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.split("\\n"):
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
+    seed = _seed_parse_fasta()
     if args.seed_code:
         seed = Path(args.seed_code).read_text()
 
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
-    def t_messy(ns):
-        try:
-            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
-            return len(r) == 2 and all(" " not in v for v in r.values())
-        except Exception:
-            return False
-
-    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    tests = _basic_tests()
     engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
     testset = engine.adversarial_tests(tests)
     root = engine.run_mcts(mcts.Strand(name="v5_adam", code=seed),
@@ -292,32 +455,9 @@ def cmd_budget(args):
     evo_mod = __import__("11_evolution.llm_evolver", fromlist=["FitnessEvaluator"])
     bg = __import__("11_evolution.budget_guard", fromlist=["BudgetGuard", "budgeted_mcts"])
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
+    seed = _seed_parse_fasta(use_splitlines=True)
 
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
-    def t_messy(ns):
-        try:
-            r = ns["parse_fasta"](">h x\n  atgc  \n\n>b\nGG\n")
-            return len(r) == 2 and all(" " not in v for v in r.values())
-        except Exception:
-            return False
-
-    tests = [(t_basic, 0.6), (t_messy, 0.4)]
+    tests = _basic_tests()
     engine = mcts.MCTSEvolution(max_rollouts=args.iterations)
     testset = engine.adversarial_tests(tests)
     with bg.BudgetGuard(token_budget=args.token_budget, time_budget=30,
@@ -340,7 +480,7 @@ def cmd_budget(args):
 def cmd_parse_spec(args):
     """Parst eine Datei ueber die Format-Spec-Ableitung (GFF3/VCF, v5)."""
     import json as _json
-    from format_spec import default_specs, detect_spec, derive_parser, parse_file_spec
+    from format_spec import default_specs, detect_spec, parse_file_spec
 
     content = Path(args.file).read_text()
     specs = default_specs()
@@ -429,6 +569,8 @@ def main():
 
     evolve_p = sub.add_parser("evolve-now", help="Evolution sofort triggern")
     evolve_p.add_argument("--show-hof", action="store_true", help="Hall of Fame anzeigen")
+    evolve_p.add_argument("--no-coevolve", action="store_true",
+                          help="Co-Evolution (Prompt<->Code) im Nachtlauf ausschalten")
 
     coev_p = sub.add_parser("coevolve", help="Prompt<->Code Co-Evolution starten")
     coev_p.add_argument("--rounds", type=int, default=3, help="Co-Evolutions-Runden")
@@ -470,6 +612,50 @@ def main():
     agent_p.add_argument("--replay", default="memory/replay_log.json", help="Replay-Log Pfad")
     agent_p.add_argument("--seed", type=int, default=42, help="Deterministischer Seed")
 
+    bst_p = sub.add_parser("brainstorm",
+                           help="3x3 MCTS-Ideenwald: Top 100 Upgrades/Optimisations/Extensions/Automatisation (v6)")
+    bst_p.add_argument("--iterations", type=int, default=400, help="Rollouts je Baum")
+    bst_p.add_argument("--seed", type=int, default=42, help="Deterministischer Seed")
+
+    val_p = sub.add_parser("validate", help="Records gegen Schema validieren (FASTA/FASTQ, v6)")
+    val_p.add_argument("file", help="Pfad zur Sequenzdatei")
+    val_p.add_argument("--schema", choices=["fasta", "fastq", "auto"], default="auto",
+                       help="Schema erzwingen oder Auto-Detect")
+    val_p.add_argument("--max-len", type=int, default=None,
+                       help="Maximale Sequenzlaenge in bp")
+
+    fg_p = sub.add_parser("fitness-guard", help="Fitness-Fruehwarnung: Status/Check (v6)")
+    fg_p.add_argument("--check", type=float, default=None,
+                      help="Kandidaten-Fitness testen (Entscheidung anzeigen)")
+    fg_p.add_argument("--baseline", type=float, default=None,
+                      help="Baseline fuer den Check (default: gespeichertes best)")
+    fg_p.add_argument("--name", default="candidate", help="Kandidaten-Name")
+
+    dash_p = sub.add_parser("dashboard", help="REST-Dashboard-Artefakte bauen (v6)")
+
+    stream_p = sub.add_parser("stream", help="Streaming-Parser: FASTA/FASTQ zeilenweise (v6)")
+    stream_p.add_argument("file", help="Pfad zur Sequenzdatei")
+    stream_p.add_argument("--head", type=int, default=5, help="Max. Records anzeigen")
+    stream_p.add_argument("--count", action="store_true", help="Nur Records zaehlen (Stream)")
+
+    kmers_p = sub.add_parser("kmers", help="k-mer Index ueber Sequenzdatei (v6)")
+    kmers_p.add_argument("file", help="Pfad zur FASTA-Datei")
+    kmers_p.add_argument("--k", type=int, default=5, help="k-mer Laenge")
+    kmers_p.add_argument("--top", type=int, default=10, help="Top-N k-mere")
+
+    webhook_p = sub.add_parser("webhook", help="Webhook-Out: Status / Hook setzen / Test (v6)")
+    webhook_p.add_argument("--url", default=None, help="Neuen Hook registrieren")
+    webhook_p.add_argument("--event", default="test", help="Event (Hook oder Test)")
+    webhook_p.add_argument("--test", action="store_true", help="Test-Event feuern")
+
+    sub.add_parser("metrics", help="Observability: Endpoint-Metriken (v6)")
+
+    prov_p = sub.add_parser("provenance", help="mRNA-Provenienz: Mutations-Log (v6)")
+    prov_p.add_argument("--name", default=None, help="Nach Parent/Child filtern")
+    prov_p.add_argument("--strategy", default=None, help="Nach Strategie filtern")
+
+    sub.add_parser("vote", help="Schwarm-Voting Demo (v6)")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -498,6 +684,26 @@ def main():
         cmd_specs(args)
     elif args.command == "agent":
         cmd_agent(args)
+    elif args.command == "brainstorm":
+        cmd_brainstorm(args)
+    elif args.command == "validate":
+        cmd_validate(args)
+    elif args.command == "fitness-guard":
+        cmd_fitness_guard(args)
+    elif args.command == "dashboard":
+        cmd_dashboard(args)
+    elif args.command == "stream":
+        cmd_stream(args)
+    elif args.command == "kmers":
+        cmd_kmers(args)
+    elif args.command == "webhook":
+        cmd_webhook(args)
+    elif args.command == "metrics":
+        cmd_metrics(args)
+    elif args.command == "provenance":
+        cmd_provenance(args)
+    elif args.command == "vote":
+        cmd_vote(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app
