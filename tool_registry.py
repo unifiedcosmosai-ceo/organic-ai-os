@@ -254,6 +254,55 @@ def dashboard_tool() -> dict:
     return dashboard.build_dashboard_data()
 
 
+def stream_tool(filepath: str, head: int = 5) -> dict:
+    import streaming_parser
+    records = streaming_parser.stream_head(filepath, n=head)
+    sample = [{"header": h,
+               "seq": (r["seq"][:40] if isinstance(r, dict) else r[:40]),
+               "qual": (r.get("qual", "")[:20] if isinstance(r, dict) else "")}
+              for h, r in records]
+    return {"records": len(records), "head": sample}
+
+
+def kmer_tool(filepath: str, k: int = 5, top: int = 10) -> dict:
+    import kmer_index
+    idx = kmer_index.index_fasta(filepath, k=k)
+    return {"k": k, "records": len(idx.per_record),
+            "vocabulary": idx.vocabulary(), "top": idx.top_kmers(top)}
+
+
+def webhook_tool(event: str = "test", payload: dict = None, url: str = None) -> dict:
+    import webhook_out
+    hooks = webhook_out.load_config()
+    if url:
+        # transienter Hook fuer diesen einen Test-Fire (kein Persistieren)
+        hooks = hooks + [{"url": url, "events": [event], "enabled": True}]
+    return webhook_out.WebhookDispatcher(hooks).fire(event,
+                                                     payload or {"source": "tool"})
+
+
+def metrics_tool() -> dict:
+    import observability
+    return observability.MetricsRegistry().load().summary()
+
+
+def provenance_tool(name: str = None, last: int = 20) -> dict:
+    sys.path.insert(0, "09_neuro")
+    import provenance
+    tracker = provenance.ProvenanceTracker()
+    tracker.load()
+    return {"summary": tracker.summary(),
+            "events": [e.to_dict() for e in tracker.query(name=name, last=last)]}
+
+
+def vote_tool() -> dict:
+    sys.path.insert(0, "10_symbiom")
+    import voting
+    results = {"test_basic": [True, True, False],
+               "test_robust": [True, True, True]}
+    return voting.swarm_vote(results)
+
+
 def make_agent(tools: Optional[Dict[str, Callable]] = None,
                replay_path: Optional[Path] = None, seed: Optional[int] = None) -> ToolRegistry:
     """Fabrik: Agent mit Standard-Tools + Replay-Log."""
@@ -269,6 +318,12 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "validate": validate_tool,
         "fitness_guard": fitness_guard_tool,
         "dashboard": dashboard_tool,
+        "stream": stream_tool,
+        "kmers": kmer_tool,
+        "webhook": webhook_tool,
+        "metrics": metrics_tool,
+        "provenance": provenance_tool,
+        "vote": vote_tool,
     }
     if tools:
         default.update(tools)
@@ -283,6 +338,12 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "validate": "Records gegen Schema validieren (FASTA/FASTQ)",
         "fitness_guard": "Kandidaten gegen Fruehwarnung pruefen",
         "dashboard": "Dashboard-Summary (KPI-Tiles)",
+        "stream": "Streaming-Parser: FASTA/FASTQ zeilenweise (Head)",
+        "kmers": "k-mer Index ueber Sequenzdatei",
+        "webhook": "Webhook-Out: Event feuern (Hook ggf. registrieren)",
+        "metrics": "Endpoint-Metriken (Latenz/Fehler)",
+        "provenance": "Mutations-Provenienz (mRNA-Traceback)",
+        "vote": "Schwarm-Voting (Majority-Ensemble)",
     }
     reg.register_all(default, descriptions)
     return reg

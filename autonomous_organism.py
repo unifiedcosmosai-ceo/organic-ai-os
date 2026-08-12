@@ -16,6 +16,17 @@ from organics_log import get_logger, event
 
 logger = get_logger("organism")
 
+try:
+    from webhook_out import WebhookDispatcher
+    _WEBHOOK = WebhookDispatcher()
+except Exception as e:
+    logger.warning("Webhook-Out nicht verfuegbar: %s", e)
+    _WEBHOOK = None
+
+def _fire_webhook(event_name, payload):
+    if _WEBHOOK is not None:
+        _WEBHOOK.fire(event_name, payload)
+
 # Gemeinsamer Auswertungs-Helfer: testet Code gegen eine Testliste
 def _score_code(code, tests):
     score = 0.0
@@ -372,6 +383,10 @@ class NightlyEvolution:
             event(logger, "EVOLUTION",
                   f"FRUEHWARNUNG {verdict['decision']} ({verdict['reason']}) "
                   f"new={new_score:.3f} base={old_score:.3f}")
+            _fire_webhook("evolution", {"name": winner.name,
+                                        "fitness": round(new_score, 3),
+                                        "baseline": round(old_score, 3),
+                                        "decision": verdict["decision"]})
 
             if new_score >= old_score and verdict["decision"] == "promote":
                 (MEMORY_DIR / "best_parser.py").write_text(winner.code)
@@ -391,6 +406,9 @@ class NightlyEvolution:
                 event(logger, "EVOLUTION",
                       f"ALARM: {winner.name} verworfen - Regressionsverdacht ({verdict['reason']})",
                       level=logger.warning)
+                _fire_webhook("alarm", {"name": winner.name,
+                                        "reason": verdict["reason"],
+                                        "fitness": round(new_score, 3)})
                 self._save_hall_of_fame(engine, tests)
             else:
                 event(logger, "EVOLUTION", "Neuer Parser schlechter - verworfen")

@@ -13,7 +13,7 @@ Endpoints:
   GET  /inbox               Dateien im Watch-Ordner
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -27,10 +27,14 @@ import sys
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "13_ui"))
+sys.path.insert(0, str(ROOT / "09_neuro"))
 
 import bio_formats
 import validation_schema
 import dashboard
+import observability
+import webhook_out
+import provenance
 
 MEMORY_DIR = ROOT / "memory"
 INBOX_DIR = ROOT / "fasta_inbox"
@@ -40,6 +44,21 @@ BRAINSTORM_DIR = ROOT / "reports" / "brainstorm_v6"
 app = FastAPI(title="Organic Organism API", version="2.0.0")
 
 _boot_time = time.time()
+
+_metrics_registry = observability.MetricsRegistry()
+
+
+@app.middleware("http")
+async def _observe_latency(request: Request, call_next):
+    start = time.monotonic()
+    ok = True
+    try:
+        response = await call_next(request)
+        ok = response.status_code < 500
+    finally:
+        _metrics_registry.record(request.url.path,
+                                 (time.monotonic() - start) * 1000, ok)
+    return response
 
 
 def _read_memory() -> dict:
@@ -207,6 +226,49 @@ def dashboard_guard():
     guard_file = MEMORY_DIR / "fitness_guard.json"
     data = json.loads(guard_file.read_text()) if guard_file.exists() else {}
     return JSONResponse({"guard": data})
+
+
+# ---------------------------------------------------------------------------
+# v6 PHASE B OPS + TRACEABILITY — Metriken, Webhook, Provenienz
+# ---------------------------------------------------------------------------
+@app.get("/metrics")
+def metrics():
+    """Endpoint-Latenz/Fehler (Observability, v6)."""
+    return JSONResponse(_metrics_registry.summary())
+
+
+@app.get("/webhooks")
+def webhooks():
+    """Status der Webhook-Out Konfiguration (v6)."""
+    return JSONResponse({
+        "hooks": webhook_out.load_config(MEMORY_DIR / "webhooks.json"),
+        "sent": len(webhook_out.WebhookDispatcher().sent),
+    })
+
+
+class WebhookTestRequest(BaseModel):
+    event: str = "test"
+    payload: dict = {}
+
+
+@app.post("/webhooks/test")
+def webhook_test(req: WebhookTestRequest):
+    """Feuert ein Event gegen konfigurierte Hooks (v6)."""
+    dispatch = webhook_out.WebhookDispatcher()
+    return JSONResponse(dispatch.fire(req.event, req.payload))
+
+
+@app.get("/provenance")
+def provenance_endpoint(strategy: str = None, name: str = None, last: int = 50):
+    """mRNA-Provenienz: Mutations-Log der Prompt-Evolution (v6)."""
+    tracker = provenance.ProvenanceTracker()
+    tracker.load()
+    return JSONResponse({
+        "summary": tracker.summary(),
+        "events": [e.to_dict() for e in tracker.query(name=name,
+                                                      strategy=strategy,
+                                                      last=last)],
+    })
 
 
 if UI_DIR.exists():

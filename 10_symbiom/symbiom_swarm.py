@@ -158,6 +158,25 @@ class SymbiomSwarm:
         self.symbionts.sort(key=lambda x: x.fitness, reverse=True)
         return self.symbionts[0]
 
+    def ensemble_score(self, tests, threshold: float = 0.5) -> dict:
+        """Schwarm-Voting (v6): alle Symbionten stimmen je Test ab (Mehrheit)."""
+        from voting import swarm_vote
+
+        results = {}
+        for i, (fn, w) in enumerate(tests):
+            votes = []
+            for s in self.symbionts:
+                try:
+                    ns = {}
+                    exec(s.code, ns, ns)
+                    res = fn(ns)
+                    votes.append(bool(res) if not isinstance(res, (int, float))
+                                 else res >= 0.5)
+                except Exception:
+                    votes.append(False)
+            results[f"test_{i}"] = votes
+        return swarm_vote(results, threshold)
+
     def export_hall_of_fame(self, path: Path = None):
         path = path or (ROOT / "memory" / "symbiom_hall_of_fame.json")
         path.parent.mkdir(parents=True, exist_ok=True)

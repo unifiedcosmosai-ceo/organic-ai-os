@@ -629,3 +629,48 @@ python app.py dashboard  → reports/dashboard/ (dashboard.html + dashboard.json
 GET /dashboard/summary → {"evolution_count":..., "fitness_history":[...], "guard":{...}}
 POST /validate → {"ok": false, "violations":[{"record":"a","rule":"alphabet",...}]}
 ```
+
+## 23. v6 Phase B: Alle Top-Ideen-Buendel (Streaming+k-mer · Webhook+Observability · Core-Traceability)
+
+**User:** (Fortsetzung v6) jetzt alle drei Buendel: Data (Streaming-Parser +
+k-mer Index), Ops (Webhook-Out + Observability), Core (mRNA-Provenienz +
+Neuro-Cortex-Persistenz + Schwarm-Voting)
+
+**Assistant:**
+- **Bundle Data** — `streaming_parser.py`: `iter_fasta/iter_fastq`,
+  `detect_format_handle`, `parse_stream`, `count_records`, `stream_head`
+  (Generator: immer nur ein Record im Speicher); `kmer_index.py`:
+  `compute_kmers`, `gc_content`, `KmerIndex` (add/frequency/top/vocabulary/
+  jaccard), `index_fasta`; CLI `app.py stream|kmers`, `stream_tool`/`kmer_tool`
+- **Bundle Ops** — `webhook_out.py`: `WebhookDispatcher` (Event-Matching,
+  urllib-POST, nie werfend, `ok:False` bei Netzfehlern), Config
+  `memory/webhooks.json`; in `NightlyEvolution.run_nightly()` feuert
+  `evolution`/`alarm` nach dem Fitness-Guard-Verdikt; `observability.py`:
+  `EndpointMetrics`/`MetricsRegistry` (Latenz+Fehlerrate, persistierbar),
+  FastAPI-Middleware `_observe_latency`, `GET /metrics`; CLI `app.py
+  webhook|metrics`, `webhook_tool`/`metrics_tool`
+- **Bundle Core** — `09_neuro/provenance.py` (mRNA-Provenienz: MutationEvent
+  + Tracker + get_provenance-Singleton), `09_neuro/cortex_persist.py`
+  (Gen-Snapshots je Generation, safe IO) - beide in `NeuroCortex.evolve`/
+  `NeuroMutator.mutate` verdrahtet (guarded import, _NEURO_OBS);
+  `10_symbiom/voting.py` (`vote_on_test`/`swarm_vote`/`weighted_fitness`),
+  `SymbiomSwarm.ensemble_score` (alle Symbionten stimmen je Test ab);
+  CLI `app.py provenance|vote`, API `GET /provenance`, `GET/POST /webhooks`,
+  `GET /metrics`; `provenance_tool`/`vote_tool`
+- **Audit-sauber gehalten**: keine breiten `except`-mit-`pass` in neuen
+  Modulen, Module-Singletons ohne Seiteneffekte, Tools/API im PY_SKIP-Muster
+- **Tests**: 73 neue (11+11+9+8+11+9+14); `make test` → **223 passed**;
+  `tools/regression_loop.py --loop 3` → 0 Fehler
+- **Doku**: README „v6 Phase B", MANUAL §23–28, DOCS §23–25 (Doku v2.2),
+  CHAT_LOG §23
+
+### Demonstriert
+```
+223 passed in ~6s (Regression-Loop 3x gruen, 0 Audits)
+python app.py stream reads.fastq --count    # Records: 2
+python app.py kmers reads.fa --k 2          # k=2 | Vocabular: 4 | AT/TG/GC/GG
+python app.py provenance                     # Events + by_strategy
+python app.py vote                           # bestanden 2/3 | Konsens 0.667
+GET /metrics   → {"endpoints":[...],"total_calls":N,"total_errors":0}
+POST /webhooks/test {"event":"alarm"}        # {"event":"alarm","targets":0,...}
+```

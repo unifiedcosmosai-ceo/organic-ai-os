@@ -1,4 +1,4 @@
-.PHONY: all test test-loop test-regression test-mcts test-skills test-budget test-spec test-tools test-ui test-validate test-guard test-dashboard coverage run parse evolve-now report clean
+.PHONY: all test test-loop test-regression test-mcts test-skills test-budget test-spec test-tools test-ui test-validate test-guard test-dashboard test-phase-b coverage run parse evolve-now report clean
 
 # Automatische Unit- + Regressions-Tests (CI-Einstieg)
 all: test
@@ -58,6 +58,13 @@ test-guard:
 # Nur Dashboard-Suite (v6)
 test-dashboard:
 	python3 -m pytest tests/test_dashboard.py -v
+
+# Nur Phase-B-Suite (v6): Streaming, k-mer, Webhook, Observability, Traceability
+test-phase-b:
+	python3 -m pytest tests/test_streaming_parser.py tests/test_kmer_index.py \
+		tests/test_webhook_out.py tests/test_observability.py \
+		tests/test_provenance_cortex.py tests/test_swarm_voting.py \
+		tests/test_phase_b_api_tools.py -v
 
 # Coverage anzeigen
 coverage:

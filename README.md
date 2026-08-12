@@ -224,6 +224,26 @@ python app.py dashboard
 make test        # 150 Tests (122 v6 + 28 v6-A)
 ```
 
+### v6 Phase B (Alle Top-Ideen-Buendel: Daten · Ops · Traceability)
+
+Die drei Top-Ideen-Buendel aus dem Idea-Forest sind umgesetzt - streaming
+Pipe, Push-Monitoring und volle Rueckverfolgbarkeit:
+
+- **💾 Streaming-Parser** — `streaming_parser.py`: zeilenweises FASTA/FASTQ-Lesen (ein Record im Speicher), `python app.py stream <file> [--count|--head N]`; `kmer_index.py` (`compute_kmers`, `KmerIndex.top_kmers/jaccard`, `index_fasta`), `python app.py kmers <file>`
+- **📡 Webhook-Out** — `webhook_out.py`: HTTP-Push bei Events (`evolution`, `alarm`) via urllib, Konfig `memory/webhooks.json`; in `run_nightly()` nach dem Fitness-Guard-Verdikt feuert; `python app.py webhook [--url U --event E --test]`
+- **🩺 Observability** — `observability.py`: Latenz/Fehler je API-Endpoint (FastAPI-Middleware); `GET /metrics`, `python app.py metrics`
+- **🧬 mRNA-Provenienz** — `09_neuro/provenance.py`: Mutations-Traceback (`NeuroMutator.mutate` protokolliert jede Mutation: Strategie/Parent/Generation), `GET /provenance`, `python app.py provenance [--name X --strategy S]`
+- **🧠 Neuro-Cortex-Persistenz** — `09_neuro/cortex_persist.py`: Gen-Snapshots der Prompt-Population (`memory/cortex_snapshots.json`) je Generation in `NeuroCortex.evolve`
+- **🐝 Schwarm-Voting** — `10_symbiom/voting.py`: Majority-Ensemble + gewichtete Fitness, `SymbiomSwarm.ensemble_score`; `python app.py vote`
+
+```bash
+python app.py stream reads.fastq --count
+python app.py kmers genome.fa --k 5 --top 10
+python app.py provenance
+python app.py vote
+make test        # 223 Tests (150 v6-A + 73 v6-B)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat

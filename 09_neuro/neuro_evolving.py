@@ -2,6 +2,13 @@ import random, re, ast
 from dataclasses import dataclass, field
 from typing import List
 
+try:
+    from provenance import get_provenance as _get_prov
+    from cortex_persist import snapshot_population as _snapshot_pop
+    _NEURO_OBS = True
+except Exception:
+    _NEURO_OBS = False
+
 @dataclass
 class PromptStrand:
     name: str
@@ -35,6 +42,11 @@ class NeuroMutator:
                 template+='\nBeispiel: Input ">a\\nATGC" -> Output {"a":"ATGC"}'
         child=PromptStrand(name=f"{strand.name}_g{strand.generation+1}", prompt_template=template.strip(), generation=strand.generation+1, lineage=strand.lineage+[strand.name])
         child.tokens=len(child.prompt_template.split())
+        if _NEURO_OBS:
+            _get_prov().record(parent=strand.name, child=child.name, strategy=strategy,
+                               generation=strand.generation,
+                               fitness_before=strand.fitness,
+                               prompt_snippet=template[:80])
         return child
 
 class NeuroCortex:
@@ -100,6 +112,8 @@ class NeuroCortex:
             print(f' Gen {gen}: best={best.name} fit={best.fitness:.3f} tok={best.tokens}')
             print(f'   Prompt: {best.prompt_template[:90]}...')
             self.history.append([(p.name,p.fitness,p.generation) for p in pop])
+            if _NEURO_OBS:
+                _snapshot_pop(pop, gen)
             if best.fitness>=0.95:
                 break
             next_gen=[best]

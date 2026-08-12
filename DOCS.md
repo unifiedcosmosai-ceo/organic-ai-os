@@ -801,6 +801,106 @@ Promotion nur bei `new_score >= old_score AND decision == "promote"`;
 - `tests/test_dashboard.py`: 8 Tests
 - Gesamtstand: `make test` → **150 Tests** (122 v6 + 28 v6-A)
 
+## 23. v6 Phase B: Streaming + k-mer Index (Layer 03 data)
+
+### 23.1 `streaming_parser.py`
+
+| Funktion | Verantwortung |
+|---|---|
+| `iter_fasta(handle)` | Generator: `(header, seq)` Record fuer Record, Uppercase, multiline faelt zusammen |
+| `iter_fastq(handle)` | Generator: `(header, {seq, qual})`, Zustandsmaschine seek/seq/qual |
+| `detect_format_handle` | Peek 1. nicht-leere Zeile → `fasta`/`fastq` |
+| `parse_stream(path, fmt)` | Oeffnet Datei, liefert `(format, Iterator)` |
+| `count_records` | Streamt komplett, zaehlt Records (kein Speicher) |
+| `stream_head(path, n)` | bricht den Stream nach n Records frueh ab |
+
+### 23.2 `kmer_index.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `compute_kmers(seq, k)` | `Counter` aller k-mere (uppercase) |
+| `gc_content(seq)` | GC-Gehalt |
+| `KmerIndex` | inkrementeller Index: `add/add_many/frequency/top_kmers/vocabulary/total/jaccard` |
+| `index_fasta(path, k)` | streamt FASTA in den Index |
+
+### 23.3 API/CLI/Tool
+
+- CLI: `python app.py stream <file> [--count|--head N]`, `python app.py kmers <file> [--k N --top N]`
+- Tools: `stream_tool(filepath, head)`, `kmer_tool(filepath, k, top)`
+
+## 24. v6 Phase B: Webhook-Out + Observability (Layer 12/13 ops)
+
+### 24.1 `webhook_out.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `load_config/save_config` | Persistenz `memory/webhooks.json` (Events/URL/enabled) |
+| `WebhookDispatcher._matching` | Hooks, die den Event abonnieren |
+| `WebhookDispatcher.fire` | POST (urllib, JSON) an alle passenden Hooks; protokolliert Entry; nie geworfen (Fehler als `ok: False`) |
+| `WebhookDispatcher.summary` | hooks/sent/delivered_ok/last |
+
+Integration: `NightlyEvolution.run_nightly()` feuert nach dem Fitness-Guard-
+Verdikt `evolution` (+ payload name/fitness/baseline/decision) bzw. bei
+Regression `alarm` (+ reason). API `GET /webhooks`, `POST /webhooks/test`.
+
+### 24.2 `observability.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `EndpointMetrics` | calls/errors/total_ms → error_rate/avg_ms |
+| `MetricsRegistry` | per-Endpoint-Aggregation + save/load (`memory/metrics.json`) |
+| `get_registry` | Singleton fuer API-Middleware/Tools |
+| `timed_call` | instrumentierte Ausfuehrung (`lambda`-Metric) |
+
+API-Middleware `_observe_latency` misst jeden Request (OK bei Status < 500).
+`GET /metrics` liefert das Registry-Summary.
+
+## 25. v6 Phase B: Core-Traceability (Layer 09/10)
+
+### 25.1 `09_neuro/provenance.py` (mRNA-Provenienz)
+
+| Baustein | Verantwortung |
+|---|---|
+| `MutationEvent` | ts/parent/child/strategy/generation/fitness_before/prompt_snippet |
+| `ProvenanceTracker` | record (cap=500), query (name/strategy), summary (by_strategy), save/load |
+| `get_provenance` | Modul-Singleton, von `NeuroMutator.mutate` bei **jeder** Mutation befuellt |
+
+### 25.2 `09_neuro/cortex_persist.py` (Neuro-Cortex-Persistenz)
+
+| Baustein | Verantwortung |
+|---|---|
+| `snapshot_population` | Append-Snapshot (generation/best/population) je Gen, safe IO (nie geworfen) |
+| `load_snapshots` | Replay/Re-Analyse der Cortex-Historie |
+
+Integration: `NeuroCortex.evolve()` schreibt je Generation ein Snapshot.
+Beide Module werden per `get_provenance()`/`load_config()` transactional genutzt.
+
+### 25.3 `10_symbiom/voting.py` (Schwarm-Voting)
+
+| Baustein | Verantwortung |
+|---|---|
+| `vote_on_test` | Majority-Vote je Test (threshold), ratio |
+| `swarm_vote` | Ensemble: passed_tests/total_tests/consensus |
+| `weighted_fitness` | gewichtete Ensemble-Fitness |
+
+Integration: `SymbiomSwarm.ensemble_score(tests)` laesst alle Symbionten je
+Test ausfuehren (exec-in-namespace, Fehler = Gegenstimme) und aggregiert via
+`swarm_vote`.
+
+### 25.4 API/CLI/Tool
+
+- CLI: `python app.py provenance [--name X --strategy S]`, `python app.py vote`
+- API: `GET /provenance` (summary + events, Filter name/strategy/last)
+- Tools: `provenance_tool(name, last)`, `vote_tool`, `metrics_tool`
+
+### 25.5 Testabdeckung (v6 Phase B)
+
+- `tests/test_streaming_parser.py`: 11 | `tests/test_kmer_index.py`: 11
+- `tests/test_webhook_out.py`: 9 | `tests/test_observability.py`: 8
+- `tests/test_provenance_cortex.py`: 11 | `tests/test_swarm_voting.py`: 9
+- `tests/test_phase_b_api_tools.py`: 14 (API + Tools + Neuro/Symbiom-Hooks)
+- Gesamtstand: `make test` → **223 Tests** (150 v6-A + 73 v6-B)
+
 ---
 
-*Technische Doku v2.1 - 2026-08-11 (v6 Phase A: Validierungs-Schema + Fitness-Fruehwarnung + REST-Dashboard)*
+*Technische Doku v2.2 - 2026-08-13 (v6 Phase B: Streaming + k-mer · Webhook + Observability · Core-Traceability)*

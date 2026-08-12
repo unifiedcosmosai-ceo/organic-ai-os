@@ -23,6 +23,12 @@ CLI-Subcommands:
   python app.py validate <file>      Records gegen Schema validieren (v6)
   python app.py fitness-guard        Fitness-Fruehwarnung: Status/Check (v6)
   python app.py dashboard            REST-Dashboard-Artefakte bauen (v6)
+  python app.py stream <file>        Streaming-Parser FASTA/FASTQ (v6)
+  python app.py kmers <file>         k-mer Index ueber Sequenzdatei (v6)
+  python app.py webhook              Webhook-Out: Status/Hook/Test (v6)
+  python app.py metrics              Observability: Endpoint-Metriken (v6)
+  python app.py provenance           mRNA-Provenienz: Mutations-Log (v6)
+  python app.py vote                 Schwarm-Voting Demo (v6)
   python app.py demo                 Code-Evolutions-Demo
   python app.py neuro-demo           Prompt-Evolutions-Demo
 """
@@ -245,6 +251,103 @@ def cmd_dashboard(args):
     files = dashboard.build_files()
     print(f"Dashboard -> reports/dashboard/ ({', '.join(files)})")
     print("Live:  python app.py serve  ->  http://localhost:8000/dashboard")
+
+
+def cmd_stream(args):
+    """Streaming-Parser: FASTA/FASTQ zeilenweise lesen (v6)."""
+    import streaming_parser
+
+    if args.count:
+        n = streaming_parser.count_records(args.file)
+        print(f"Records: {n}")
+        return
+    records = streaming_parser.stream_head(args.file, n=args.head)
+    fmt, _ = streaming_parser.parse_stream(args.file)
+    print(f"Format: {fmt} | Records (head {min(args.head, len(records))}):")
+    for header, rec in records[:args.head]:
+        if isinstance(rec, dict):
+            print(f"  {header}: seq={rec['seq'][:40]} qual={rec.get('qual','')[:20]}")
+        else:
+            print(f"  {header}: {rec[:60]}")
+
+
+def cmd_kmers(args):
+    """k-mer Index ueber eine Sequenzdatei (v6)."""
+    import kmer_index
+
+    idx = kmer_index.index_fasta(args.file, k=args.k)
+    print(f"k={idx.k} | Records: {len(idx.per_record)} | "
+          f"Vocabular: {idx.vocabulary()} | Total k-mere: {idx.total()}")
+    for kmer, cnt in idx.top_kmers(args.top):
+        print(f"  {kmer}: {cnt}")
+
+
+def cmd_webhook(args):
+    """Webhook-Out: Status, Hook setzen oder Test-Event feuern (v6)."""
+    import webhook_out
+
+    if args.url:
+        hooks = webhook_out.load_config()
+        hooks.append({"url": args.url, "events": [args.event], "enabled": True})
+        webhook_out.save_config(hooks)
+        print(f"Hook registriert: {args.url} (event={args.event})")
+        return
+    dispatch = webhook_out.WebhookDispatcher()
+    if args.test:
+        entry = dispatch.fire(args.event, {"source": "cli", "test": True})
+        print(f"Event '{args.event}' -> {len(entry['results'])} Ziel(e)")
+        for r in entry["results"]:
+            print(f"  {'OK' if r['ok'] else 'FAIL'} {r['url']} status={r['status']}")
+        return
+    s = dispatch.summary()
+    print(f"Hooks: {s['hooks']} | sent: {s['sent']} | delivered_ok: {s['delivered_ok']}")
+
+
+def cmd_metrics(args):
+    """Observability: Endpoint-Metriken (v6)."""
+    import observability
+
+    reg = observability.MetricsRegistry()
+    reg.load()
+    s = reg.summary()
+    print(f"Endpoints: {len(s['endpoints'])} | Calls: {s['total_calls']} "
+          f"| Errors: {s['total_errors']}")
+    for e in s["endpoints"]:
+        print(f"  {e['endpoint']:28s} calls={e['calls']:4d} "
+              f"err={e['error_rate']:.3f} avg={e['avg_ms']:7.2f}ms")
+
+
+def cmd_provenance(args):
+    """mRNA-Provenienz: Mutations-Log ausgeben (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "09_neuro"))
+    import provenance
+
+    tracker = provenance.ProvenanceTracker()
+    tracker.load()
+    s = tracker.summary()
+    print(f"Events: {s['events']} | by_strategy: {s['by_strategy']}")
+    for e in tracker.query(name=args.name, strategy=args.strategy, last=15):
+        print(f"  {e.strategy:8s} {e.parent} -> {e.child} "
+              f"(fit={e.fitness_before:.3f}) [{e.prompt_snippet[:40]}]")
+
+
+def cmd_vote(args):
+    """Schwarm-Voting Demo: Mehrheits-Ensemble ueber Beispieldaten (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "10_symbiom"))
+    import voting
+
+    results = {"test_basic": [True, True, False],
+               "test_robust": [True, True, True],
+               "test_edges": [False, False, True]}
+    v = voting.swarm_vote(results)
+    print(f"Schwarm-Voting: bestanden {v['passed_tests']}/{v['total_tests']} "
+          f"| Konsens {v['consensus']}")
+    for name, res in v["votes"].items():
+        print(f"  {name:12s} pass={res['passed']} yes={res['yes']}/{res['total']}")
+    members = [("robust_0", 0.9, 0.5), ("fast_1", 0.7, 0.3), ("compact_2", 0.6, 0.2)]
+    print(f"Gewichtete Ensemble-Fitness: {voting.weighted_fitness(members)}")
 
 
 def cmd_coevolve(args):
@@ -530,6 +633,29 @@ def main():
 
     dash_p = sub.add_parser("dashboard", help="REST-Dashboard-Artefakte bauen (v6)")
 
+    stream_p = sub.add_parser("stream", help="Streaming-Parser: FASTA/FASTQ zeilenweise (v6)")
+    stream_p.add_argument("file", help="Pfad zur Sequenzdatei")
+    stream_p.add_argument("--head", type=int, default=5, help="Max. Records anzeigen")
+    stream_p.add_argument("--count", action="store_true", help="Nur Records zaehlen (Stream)")
+
+    kmers_p = sub.add_parser("kmers", help="k-mer Index ueber Sequenzdatei (v6)")
+    kmers_p.add_argument("file", help="Pfad zur FASTA-Datei")
+    kmers_p.add_argument("--k", type=int, default=5, help="k-mer Laenge")
+    kmers_p.add_argument("--top", type=int, default=10, help="Top-N k-mere")
+
+    webhook_p = sub.add_parser("webhook", help="Webhook-Out: Status / Hook setzen / Test (v6)")
+    webhook_p.add_argument("--url", default=None, help="Neuen Hook registrieren")
+    webhook_p.add_argument("--event", default="test", help="Event (Hook oder Test)")
+    webhook_p.add_argument("--test", action="store_true", help="Test-Event feuern")
+
+    sub.add_parser("metrics", help="Observability: Endpoint-Metriken (v6)")
+
+    prov_p = sub.add_parser("provenance", help="mRNA-Provenienz: Mutations-Log (v6)")
+    prov_p.add_argument("--name", default=None, help="Nach Parent/Child filtern")
+    prov_p.add_argument("--strategy", default=None, help="Nach Strategie filtern")
+
+    sub.add_parser("vote", help="Schwarm-Voting Demo (v6)")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -566,6 +692,18 @@ def main():
         cmd_fitness_guard(args)
     elif args.command == "dashboard":
         cmd_dashboard(args)
+    elif args.command == "stream":
+        cmd_stream(args)
+    elif args.command == "kmers":
+        cmd_kmers(args)
+    elif args.command == "webhook":
+        cmd_webhook(args)
+    elif args.command == "metrics":
+        cmd_metrics(args)
+    elif args.command == "provenance":
+        cmd_provenance(args)
+    elif args.command == "vote":
+        cmd_vote(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app
