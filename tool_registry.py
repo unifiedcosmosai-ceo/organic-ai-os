@@ -13,7 +13,7 @@ import hashlib
 import json
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
@@ -34,6 +34,30 @@ class ReplayEntry:
 
 def _hash(obj) -> str:
     return hashlib.sha256(json.dumps(obj, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+def _seed_parse_fasta(use_splitlines=False) -> str:
+    """Standard parse_fasta Saatcode fuer MCTS/Skill/Budget Tools."""
+    split = "text.splitlines()" if use_splitlines else 'text.split("\\n")'
+    return f"""def parse_fasta(text):
+    records = {{}}
+    header = ""
+    for line in {split}:
+        if line.startswith(">"):
+            header = line[1:].split()[0]
+            records[header] = ""
+        else:
+            records[header] += line.strip().upper()
+    return records
+"""
+
+
+def _t_basic_parser(ns) -> bool:
+    """parse_fasta Basistest: 2 Records."""
+    try:
+        return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
+    except Exception:
+        return False
 
 
 class ToolRegistry:
@@ -149,26 +173,9 @@ def mcts_evolve_tool(iterations: int = 60) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     best = engine.run_mcts(Strand(name="v5_adam", code=seed), FitnessEvaluator,
                            tests, iterations=iterations)
     return {"champion": best.strand.name, "fitness": round(best.strand.fitness, 4),
@@ -181,26 +188,9 @@ def skill_library_tool(iterations: int = 60) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     root = engine.run_mcts(Strand(name="adam", code=seed), FitnessEvaluator, tests,
                            iterations=iterations)
     lib = SkillLibrary.load(Path("memory") / "skill_library.json")
@@ -220,26 +210,9 @@ def budget_tool(iterations: int = 40, token_budget: float = 300.0) -> dict:
     from mcts_evolver import MCTSEvolution
     from llm_evolver import FitnessEvaluator, Strand
 
-    seed = """def parse_fasta(text):
-    records = {}
-    header = ""
-    for line in text.splitlines():
-        if line.startswith(">"):
-            header = line[1:].split()[0]
-            records[header] = ""
-        else:
-            records[header] += line.strip().upper()
-    return records
-"""
-
-    def t_basic(ns):
-        try:
-            return len(ns["parse_fasta"](">a\nATGC\n>b\nGG\n")) == 2
-        except Exception:
-            return False
-
+    seed = _seed_parse_fasta(use_splitlines=True)
     engine = MCTSEvolution(max_rollouts=iterations)
-    tests = engine.adversarial_tests([(t_basic, 1.0)])
+    tests = engine.adversarial_tests([(_t_basic_parser, 1.0)])
     with BudgetGuard(token_budget=token_budget, time_budget=30,
                      iteration_budget=iterations, soft=True) as guard:
         root, snap = budgeted_mcts(engine, Strand(name="adam", code=seed),
@@ -256,6 +229,31 @@ def specs_tool() -> dict:
                        "columns": len(specs[n].columns)} for n in list_specs()]}
 
 
+def validate_tool(filepath: str, schema: str = "auto") -> dict:
+    import validation_schema
+    content = Path(filepath).read_text(errors="ignore")
+    report = validation_schema.validate_content(content, schema=schema)
+    return report.to_dict()
+
+
+def fitness_guard_tool(fitness: float, baseline: float = None,
+                       name: str = "candidate") -> dict:
+    sys.path.insert(0, "11_evolution")
+    from fitness_guard import FitnessGuard
+    guard = FitnessGuard()
+    guard.load()
+    res = guard.check_candidate(name=name, fitness=fitness, baseline=baseline)
+    return {"decision": res["decision"], "reason": res["reason"],
+            "fitness": res["fitness"], "baseline": res["baseline"],
+            "alarms": guard.alarms}
+
+
+def dashboard_tool() -> dict:
+    sys.path.insert(0, "13_ui")
+    import dashboard
+    return dashboard.build_dashboard_data()
+
+
 def make_agent(tools: Optional[Dict[str, Callable]] = None,
                replay_path: Optional[Path] = None, seed: Optional[int] = None) -> ToolRegistry:
     """Fabrik: Agent mit Standard-Tools + Replay-Log."""
@@ -268,6 +266,9 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "skill_library": skill_library_tool,
         "budget": budget_tool,
         "specs": specs_tool,
+        "validate": validate_tool,
+        "fitness_guard": fitness_guard_tool,
+        "dashboard": dashboard_tool,
     }
     if tools:
         default.update(tools)
@@ -279,6 +280,9 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "skill_library": "MCTS-Rollouts -> verifizierte Skills",
         "budget": "Budget-begrenzter MCTS-Run",
         "specs": "Registrierte Format-Specs",
+        "validate": "Records gegen Schema validieren (FASTA/FASTQ)",
+        "fitness_guard": "Kandidaten gegen Fruehwarnung pruefen",
+        "dashboard": "Dashboard-Summary (KPI-Tiles)",
     }
     reg.register_all(default, descriptions)
     return reg

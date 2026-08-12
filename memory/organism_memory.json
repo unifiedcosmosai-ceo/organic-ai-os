@@ -56,8 +56,57 @@
       "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
       "lineage": [],
       "time": "2026-08-10T23:49:10.971674"
+    },
+    "gen_3": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-11T04:25:15.633095"
+    },
+    "gen_4": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-11T04:25:19.609375"
+    },
+    "gen_5": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-11T04:25:23.586734"
+    },
+    "gen_6": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-11T04:25:27.660655"
+    },
+    "gen_7": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-11T04:34:08.459068"
+    },
+    "gen_8": {
+      "fitness": 1.0,
+      "code": "\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s)\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+      "lineage": [],
+      "time": "2026-08-11T04:36:24.623630"
     }
   },
   "prompt_history": [],
-  "evolution_count": 3
+  "evolution_count": 9,
+  "prompt_hint": "# prompt-hint: Du bist Senior Python Engineer. Erstelle def parse_fasta(text: str) -> dict. Req\n# prompt-hint: Du bist Senior Python Engineer. Erstelle def parse_fasta(text: str) -> dict. Req\n\ndef parse_fasta(text):\n    records={}\n    curr=None\n    buf=[]\n    for line in text.splitlines():\n        s=line.strip()\n        if not s: continue\n        if s.startswith(\">\"):\n            if curr: records[curr]=\"\".join(buf)\n            curr=s[1:].split()[0]\n            buf=[]\n        else:\n            buf.append(s.upper())\n    if curr: records[curr]=\"\".join(buf)\n    return records\n",
+  "coevolution": {
+    "best_prompt": {
+      "name": "adam_engineer",
+      "fitness": 1.0
+    },
+    "best_code": {
+      "name": "robust_0",
+      "fitness": 1.0
+    },
+    "co_score": 1.0,
+    "time": "2026-08-11T04:36:23.100724"
+  }
 }

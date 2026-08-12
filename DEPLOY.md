@@ -51,6 +51,26 @@ sudo systemctl status organic-organism-nightly.timer
 4. Bester Parser ersetzt alten nur wenn Score besser
 5. Fossil wird gespeichert: memory/parser_gen_N.py
 6. Memory wird aktualisiert
+7. Optional danach Co-Evolution (Prompt↔Code, Layer 09/10): persistiert
+   `prompt_hint` + `coevolution` im Memory
+
+## v6: UI, Brainstorm & Qualitaets-Loop
+
+```bash
+# Brainstorm (Layer 13): 400 Ideen (Top 100 x 4) + Mindmap
+python app.py brainstorm --iterations 400 --seed 42
+# → reports/brainstorm_v6/ (top100.json, mindmap.md/.mmd/.html, mindmap_tree.json)
+
+# UI + Brainstorm-API über FastAPI
+python app.py serve
+# http://localhost:8000/ui               (responsive UI)
+# http://localhost:8000/brainstorm/top100.json
+
+# Qualitaets-Loop (COMPILE → AUDIT → TEST → REPORT)
+make test-loop          # 1 Runde
+make fix                # einfache Audits automatisch reparieren
+python3 tools/regression_loop.py --loop 5
+```
 
 ## Monitoring
 

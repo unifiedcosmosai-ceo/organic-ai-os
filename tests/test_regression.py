@@ -122,3 +122,51 @@ def test_no_dead_ollama_stub():
     src = (ROOT / "11_evolution" / "llm_evolver.py").read_text()
     assert "pass  # import ollama" not in src
     assert "# import ollama; return" not in src
+
+
+# ---- 6. Weak-Code-Gates: keine neuen bare-except / silent-pass in aktivem Code ----
+import ast as _ast
+
+
+def _audited_sources():
+    """Aktive Quelldateien (ohne Legacy-Checkpoint-Schnappschuesse)."""
+    checkpoints = {
+        "organic_ai_os_evolving.py", "organic_ai_os_evolving_1.py",
+        "organic_ai_os_evolving_2.py", "organic_ai_os_evolving_3.py",
+        "organic_ai_os_evolving_final.py", "organic_os_final_integrated.py",
+        "autonomous_organism_1.py", "neuro_evolving_1.py",
+    }
+    for py in sorted(ROOT.rglob("*.py")):
+        if "__pycache__" in py.parts or py.name in checkpoints:
+            continue
+        yield py
+
+
+def test_no_bare_except_in_active_code():
+    bad = []
+    for py in _audited_sources():
+        try:
+            tree = _ast.parse(py.read_text())
+        except SyntaxError:
+            continue
+        for node in _ast.walk(tree):
+            if isinstance(node, _ast.ExceptHandler) and node.type is None:
+                bad.append(f"{py.name}:{node.lineno}")
+    assert not bad, f"Bare except in aktivem Code: {bad}"
+
+
+def test_regression_loop_tool_phases_clean():
+    """Regressions-Loop-Phasen (Compile+Audit+Duplicates+Paths) sind ohne Befunde.
+
+    Testet die Tool-Funktionen direkt (kein rekursiver Subprozess-Spawning).
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import regression_loop as rl
+
+    assert rl.compile_all() == []
+    assert rl.audit_all() == []
+    assert rl.ensure_conftest_paths() == []
+    # Duplicate-Files: erlaubt (evolving*-Checkpoints sind identische Snapshots)
+    dups = [d for d in rl.find_duplicate_files()
+            if "organic_ai_os_evolving" not in d]
+    assert dups == [], dups

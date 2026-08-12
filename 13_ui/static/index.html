@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Organic AI OS — Evolution Console</title>
+<style>
+/* ============ DESIGN TOKENS (fluid auto-scaling) ============ */
+:root{
+  --bg:#0b0f14; --bg2:#11161e; --panel:#151c26; --panel2:#1a2330;
+  --fg:#e6edf3; --fg-dim:#94a3b8; --line:#253041;
+  --acc:#58a6ff; --acc2:#3fb950; --warn:#d29922; --vio:#bc8cff; --red:#f85149;
+  --radius:clamp(8px, 1.2vmin, 16px);
+  --pad:clamp(10px, 1.6vmin, 28px);
+  --fs-xxs:clamp(11px,1.25vmin,13px);
+  --fs-xs:clamp(12px,1.5vmin,14px);
+  --fs-s:clamp(13px,1.8vmin,16px);
+  --fs-m:clamp(16px,2.4vmin,22px);
+  --fs-l:clamp(22px,3.6vmin,34px);
+  --fs-xl:clamp(30px,6vmin,56px);
+  --icon:clamp(16px,2.2vmin,22px);
+  --gap:clamp(8px,1.4vmin,18px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--fg);overflow:hidden;
+  font-family:ui-monospace,'Cascadia Code','SFMono-Regular',Menlo,monospace;
+  font-size:var(--fs-s);line-height:1.5;
+}
+body.dim{filter:brightness(.9)}
+
+/* ============ GRID SHELL — adaptiert automatisch an Gerät & Orientierung ============ */
+#app{
+  display:grid;
+  height:100dvh; width:100vw;
+  grid-template-rows:auto 1fr auto;
+  grid-template-columns:1fr;
+  gap:var(--gap); padding:var(--pad);
+}
+body.horizontal #app{ grid-template-columns:minmax(340px,30vw) 1fr; grid-template-rows:auto 1fr auto; }
+body.horizontal #sidebar{ grid-column:1; grid-row:1/4; }
+body.horizontal #header{ grid-column:2; grid-row:1; }
+body.horizontal main{ grid-column:2; grid-row:2; }
+body.horizontal #statusbar{ grid-column:2; grid-row:3; }
+
+/* ============ HEADER ============ */
+#header{
+  display:flex;align-items:center;gap:var(--gap);flex-wrap:wrap;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:var(--pad); min-width:0;
+}
+#logo{font-size:var(--icon);filter:drop-shadow(0 0 6px rgba(88,166,255,.5))}
+#title{font-size:var(--fs-m);font-weight:700;letter-spacing:.5px;white-space:nowrap}
+#title b{color:var(--acc)}
+#ticker{font-size:var(--fs-xl);font-weight:800;color:var(--acc2);line-height:1;
+  font-variant-numeric:tabular-nums; text-shadow:0 0 18px rgba(63,185,80,.35)}
+#spacer{flex:1}
+.chip{font-size:var(--fs-xxs);padding:3px 10px;border-radius:999px;border:1px solid var(--line);
+  background:var(--bg2);color:var(--fg-dim);white-space:nowrap}
+#orient{color:var(--vio);border-color:var(--vio)}
+
+/* ============ SIDEBAR (Navigation) ============ */
+#sidebar{
+  display:flex;flex-direction:column;gap:var(--gap);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:var(--pad); overflow-y:auto; min-width:0;
+}
+.navbtn{
+  text-align:left;cursor:pointer;border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--panel2);color:var(--fg);padding:calc(var(--pad)*.55) var(--pad);
+  font:inherit;display:flex;flex-direction:column;gap:4px;transition:all .15s;width:100%;
+}
+.navbtn small{color:var(--fg-dim);font-size:var(--fs-xxs)}
+.navbtn .bar{height:6px;border-radius:3px;background:var(--bg);overflow:hidden;position:relative}
+.navbtn .bar i{position:absolute;inset:0;background:linear-gradient(90deg,var(--acc),var(--acc2));width:0%;transition:width .4s}
+.navbtn.active{border-color:var(--acc);box-shadow:0 0 14px rgba(88,166,255,.25);background:var(--bg2)}
+.navbtn .cnt{margin-left:auto;font-size:var(--fs-s);color:var(--acc);font-weight:700}
+
+/* ============ MAIN CONTENT ============ */
+main{overflow:auto;min-height:0;scroll-behavior:smooth}
+#views{display:grid;gap:var(--gap)}
+.view{display:none}
+.view.active{display:grid;gap:var(--gap);grid-auto-rows:min-content}
+.viewhead{font-size:var(--fs-l);font-weight:800;letter-spacing:1px}
+.viewhead span{display:inline-block;margin-right:.4em}
+.h2{font-size:var(--fs-m);font-weight:700;color:var(--fg-dim);margin:var(--gap) 0 calc(var(--gap)*.5)}
+.v1{color:var(--acc)} .v2{color:var(--acc2)} .v3{color:var(--warn)} .v4{color:var(--vio)}
+
+/* ============ KPI CARDS (auto-scaling grid) ============ */
+#kpis{display:grid;gap:var(--gap);grid-template-columns:repeat(auto-fit,minmax(clamp(160px,20vw,240px),1fr))}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:calc(var(--pad)*.7); display:flex;flex-direction:column;gap:4px;
+  transition:transform .15s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi .k{font-size:var(--fs-xxs);color:var(--fg-dim);text-transform:uppercase;letter-spacing:1px}
+.kpi .v{font-size:var(--fs-l);font-weight:800;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:var(--fs-xxs);color:var(--fg-dim)}
+.kpi.big .v{font-size:var(--fs-xl);color:var(--acc2)}
+
+/* ============ LISTEN (Top 100) ============ */
+.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(260px,30vw,420px),1fr));
+  gap:var(--gap)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:calc(var(--pad)*.7); display:flex;flex-direction:column;gap:6px;position:relative}
+.card .rank{position:absolute;top:calc(var(--pad)*.5);right:calc(var(--pad)*.6);
+  font-size:var(--fs-xl);font-weight:900;color:var(--line);opacity:.5;-webkit-text-stroke:1px var(--fg-dim)}
+.card .t{font-size:var(--fs-s);font-weight:700;color:var(--acc);padding-right:3ch}
+.card .b{font-size:var(--fs-xxs);color:var(--fg-dim)}
+.card .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:var(--fs-xxs)}
+.tag{padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--bg2)}
+.tag.hi{color:var(--acc2);border-color:var(--acc2)}
+.score{color:var(--warn);font-weight:700}
+.card.done{border-color:var(--acc2)}
+.gauge{height:5px;border-radius:3px;background:var(--bg);overflow:hidden}
+.gauge i{display:block;height:100%;border-radius:3px;
+  background:linear-gradient(90deg,var(--acc),var(--acc2));width:0%;transition:width .5s}
+
+/* ============ WIRTSCHAFT: Progress (Top 100 je Kategorie) ============ */
+#progress{display:grid;gap:var(--gap)}
+.prow{display:grid;grid-template-columns:auto 1fr auto;gap:var(--gap);align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:var(--pad)}
+.prow .lbl{font-weight:700;font-size:var(--fs-s)}
+.prow .pb{height:12px;border-radius:6px;background:var(--bg);overflow:hidden}
+.prow .pb i{display:block;height:100%;width:0%;transition:width .5s;border-radius:6px}
+.prow .pct{font-size:var(--fs-m);font-weight:800;font-variant-numeric:tabular-nums}
+.col-up{background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.col-opt{background:linear-gradient(90deg,var(--acc2),var(--warn))}
+.col-ext{background:linear-gradient(90deg,var(--warn),var(--vio))}
+.col-aut{background:linear-gradient(90deg,var(--vio),var(--acc))}
+
+/* ============ Toolbox / Workflows / Templates / Designs ============ */
+.toolgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(240px,26vw,400px),1fr));gap:var(--gap)}
+.tool{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:var(--pad)}
+.tool .th{display:flex;align-items:center;gap:8px;font-weight:800;margin-bottom:8px;font-size:var(--fs-s)}
+.folder{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);gap:8px;overflow-x:auto;padding-bottom:6px}
+.folder .f{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px;
+  font-size:var(--fs-xxs);color:var(--fg-dim);white-space:nowrap;text-align:center}
+.folder .f b{color:var(--fg);display:block;font-size:var(--fs-s);margin-bottom:4px}
+
+/* ============ Mindmap Einbettung ============ */
+.treegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(220px,24vw,360px),1fr));gap:var(--gap)}
+.tree{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:var(--pad)}
+.tree pre{font-size:var(--fs-xxs);color:var(--acc2);white-space:pre-wrap;overflow:auto;max-height:60vh}
+
+/* ============ STATUS BAR ============ */
+#statusbar{display:flex;align-items:center;gap:var(--gap);flex-wrap:wrap;
+  font-size:var(--fs-xxs);color:var(--fg-dim);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:calc(var(--pad)*.5) var(--pad)}
+#statusbar .dot{width:9px;height:9px;border-radius:50%;background:var(--acc2);
+  box-shadow:0 0 8px var(--acc2);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#statusbar .sep{opacity:.3}
+
+/* ============ MODE SWITCH (horizontal/vertical) ============ */
+#modewrap{display:flex;gap:6px}
+.mbtn{cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--fg-dim);
+  border-radius:8px;padding:6px 12px;font:inherit;font-size:var(--fs-xxs)}
+.mbtn.active{color:var(--fg);border-color:var(--acc);box-shadow:0 0 8px rgba(88,166,255,.3)}
+.mbtn span{display:block;font-size:var(--fs-xxs)}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* Landschaft / Hochformat: Auto-Skript */
+body.vertical   #orient::after{content:"HOCHFORMAT"}
+body.horizontal #orient::after{content:"QUERFORMAT"}
+
+/* ============ SMALL SCREENS (Mobile) ============ */
+@media (max-width:640px){
+  #kpis{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+  #title{font-size:var(--fs-s)}
+  .navbtn{flex-direction:row;align-items:center;justify-content:space-between}
+  .navbtn small{display:none}
+}
+</style>
+</head>
+<body class="horizontal">
+<div id="app">
+  <!-- ============ SIDEBAR NAV ============ -->
+  <aside id="sidebar">
+    <button class="navbtn active" data-view="overview"><span>ÜBERBLICK</span>
+      <small>Organismus-Status</small><div class="bar"><i id="pTotal"></i></div></button>
+    <button class="navbtn" data-view="upgrades"><span>UPGRADES</span>
+      <small>Kern-Tiefe</small><div class="bar"><i id="pUp" class="col-up" style="width:0%"></i></div>
+      <span class="cnt" id="cUp">0</span></button>
+    <button class="navbtn" data-view="optimisations"><span>OPTIMISATIONS</span>
+      <small>Effizienz</small><div class="bar"><i id="pOpt" class="col-opt" style="width:0%"></i></div>
+      <span class="cnt" id="cOpt">0</span></button>
+    <button class="navbtn" data-view="extensions"><span>EXTENSIONS</span>
+      <small>Breite / Neue Fähigkeiten</small><div class="bar"><i id="pExt" class="col-ext" style="width:0%"></i></div>
+      <span class="cnt" id="cExt">0</span></button>
+    <button class="navbtn" data-view="automatisation"><span>AUTOMATISATION</span>
+      <small>Tools · Loops · Workflows · Templates · Designs</small><div class="bar"><i id="pAut" class="col-aut" style="width:0%"></i></div>
+      <span class="cnt" id="cAut">0</span></button>
+    <button class="navbtn" data-view="tools"><span>TOOLBOX</span>
+      <small>Loops · Workflows · Templates · Designs</small></button>
+    <button class="navbtn" data-view="tree"><span>3×3 MINDMAP</span>
+      <small>9 Monte-Carlo-Bäume</small></button>
+  </aside>
+
+  <!-- ============ HEADER ============ -->
+  <header id="header">
+    <span id="logo">🧬</span>
+    <span id="title">ORGANIC <b>AI OS</b></span>
+    <span class="chip" id="fitnesschip">Fit —</span>
+    <span class="chip" id="genchip">Gen —</span>
+    <span class="chip" id="orient-chip">📐 <span id="orient"></span></span>
+    <span id="spacer"></span>
+    <div id="modewrap">
+      <button class="mbtn active" data-mode="horizontal" title="Querformat-Layout">⇆ <span>Horizontal</span></button>
+      <button class="mbtn" data-mode="vertical" title="Hochformat-Layout">⇅ <span>Vertikal</span></button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN VIEWS ============ -->
+  <main>
+    <div id="views">
+
+      <!-- OVERVIEW -->
+      <section class="view active" id="view-overview">
+        <div class="viewhead"><span class="v1">◉</span>ÜBERBLICK</div>
+        <div id="kpis">
+          <div class="kpi big"><span class="k">Fitness</span><span class="v" id="kFit">—</span><span class="s">Champion</span></div>
+          <div class="kpi"><span class="k">Evolutionen</span><span class="v" id="kEv">0</span><span class="s">Generationen</span></div>
+          <div class="kpi"><span class="k">Dateien</span><span class="v" id="kFiles">0</span><span class="s">gesehen</span></div>
+          <div class="kpi"><span class="k">Strands</span><span class="v" id="kStrands">0</span><span class="s">best_strands</span></div>
+          <div class="kpi"><span class="k">Ideen</span><span class="v" id="kIdeas">400</span><span class="s">MCTS 3×3 Forest</span></div>
+        </div>
+        <div class="h2">Fortschritt — Top 100 je Kategorie</div>
+        <div id="progress"></div>
+        <div class="h2">Letzte Champion-Entwicklung</div>
+        <div id="hof"></div>
+      </section>
+
+      <!-- UPGRADES -->
+      <section class="view" id="view-upgrades">
+        <div class="viewhead"><span class="v1">▲</span>TOP 100 UPGRADES</div>
+        <div class="list" id="list-upgrades"></div>
+      </section>
+
+      <!-- OPTIMISATIONS -->
+      <section class="view" id="view-optimisations">
+        <div class="viewhead"><span class="v2">⚡</span>TOP 100 OPTIMISATIONS</div>
+        <div class="list" id="list-optimisations"></div>
+      </section>
+
+      <!-- EXTENSIONS -->
+      <section class="view" id="view-extensions">
+        <div class="viewhead"><span class="v3">+</span>TOP 100 EXTENSIONS</div>
+        <div class="list" id="list-extensions"></div>
+      </section>
+
+      <!-- AUTOMATISATION -->
+      <section class="view" id="view-automatisation">
+        <div class="viewhead"><span class="v4">◆</span>TOP 100 AUTOMATISATION</div>
+        <div class="h2">Tools · Loops · Workflows · Templates · Designs</div>
+        <div class="list" id="list-automatisation"></div>
+      </section>
+
+      <!-- TOOLBOX -->
+      <section class="view" id="view-tools">
+        <div class="viewhead"><span class="v1">🧰</span>TOOLBOx</div>
+        <div class="toolgrid">
+          <div class="tool"><div class="th">◉ LOOPS</div><div id="d-loops" class="folder"></div></div>
+          <div class="tool"><div class="th">⚙ WORKFLOWS</div><div id="d-workflows" class="folder"></div></div>
+          <div class="tool"><div class="th">▤ TEMPLATES</div><div id="d-templates" class="folder"></div></div>
+          <div class="tool"><div class="th">◈ DESIGNS</div><div id="d-designs" class="folder"></div></div>
+        </div>
+      </section>
+
+      <!-- MINDMAP -->
+      <section class="view" id="view-tree">
+        <div class="viewhead"><span class="v2">🌳</span>3×3 MCTS FOREST</div>
+        <div class="h2">9 Bäume — Achsen: core · data · ops × Skalen: atomic · component · system</div>
+        <div class="treegrid" id="treegrid"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ============ STATUS BAR ============ -->
+  <footer id="statusbar">
+    <span class="dot"></span><span id="sMode">MCTS 3×3 Forest v6</span>
+    <span class="sep">·</span><span id="sFit">Fitness —</span>
+    <span class="sep">·</span><span id="sEvo">Evolutionen 0</span>
+    <span class="sep">·</span><span id="sUi">Responsiv · Auto-Scale</span>
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   ORGANIC AI OS — Evolution Console (Layer 13 UI)
+   Responsiv: auto-scale @ Gerät/Viewport · horizontal/vertikal
+   ============================================================ */
+const $=(s)=>document.querySelector(s), $$=(s)=>[...document.querySelectorAll(s)];
+const state={mode:'horizontal', active:'overview', counts:{}, ideas:{}, stats:null};
+
+/* ---------- Daten laden (API + Brainstorm-JSON) ---------- */
+async function loadShape(){
+  try{
+    const r=await fetch('/brainstorm/top100.json'); const data=await r.json();
+    const r2=await fetch('/brainstorm/mindmap_tree.json'); const tree=await r2.json();
+    state.data=data; state.tree=tree;
+    for(const cat in data.categories){ state.counts[cat]=data.categories[cat].length; }
+    renderNav(); renderOverview(); renderLists(); renderToolbox(); renderTrees();
+  }catch(e){ console.warn('Brainstorm-Daten ausgeliehen:',e); }
+}
+
+async function loadStats(){
+  try{
+    const r=await fetch('/stats'); const s=await r.json();
+    state.stats=s;
+    const hof=s&&s.hall_of_fame&&s.hall_of_fame.length?s.hall_of_fame[s.hall_of_fame.length-1]:null;
+    const fit=hof?hof.fitness:'—';
+    $('#kFit').textContent=fit; $('#kEv').textContent=s.evolution_count;
+    $('#kFiles').textContent=s.files_seen; $('#kStrands').textContent=s.best_strands;
+    $('#fitnesschip').textContent='Fit '+fit; $('#genchip').textContent='Gen '+(hof?hof.generation:s.evolution_count);
+    $('#sFit').textContent='Fitness '+fit; $('#sEvo').textContent='Evolutionen '+s.evolution_count;
+    $('#pTotal').style.width=Math.min(100,s.evolution_count*8)+'%';
+    renderHOF(hof);
+  }catch(e){ /* API optional */ }
+}
+
+/* ---------- Rendering ---------- */
+function renderNav(){
+  const colors={upgrades:'var(--acc)',optimisations:'var(--acc2)',extensions:'var(--warn)',automatisation:'var(--vio)'};
+  for(const cat in state.counts){
+    $('#c'+{upgrades:'Up',optimisations:'Opt',extensions:'Ext',automatisation:'Aut'}[cat]).textContent=state.counts[cat];
+    $('#p'+{upgrades:'Up',optimisations:'Opt',extensions:'Ext',automatisation:'Aut'}[cat]).style.width='100%';
+  }
+}
+function renderOverview(){
+  const cats=[['upgrades','col-up'],['optimisations','col-opt'],['extensions','col-ext'],['automatisation','col-aut']];
+  $('#progress').innerHTML=cats.map(([c,col])=>{
+    const n=state.counts[c]||0;
+    return `<div class="prow"><span class="lbl">${caps(c)}</span>
+      <div class="pb"><i class="${col}" style="width:${n}%"></i></div>
+      <span class="pct">${n}/100</span></div>`;
+  }).join('');
+}
+function renderHOF(hof){
+  if(!hof){ $('#hof').innerHTML='<div class="card"><span class="t">Noch kein Champion</span></div>'; return; }
+  $('#hof').innerHTML=`<div class="card"><span class="rank">★</span>
+    <span class="t">${hof.name}</span>
+    <span class="meta"><span class="tag hi">Fit ${Math.round(hof.fitness*1000)/1000}</span>
+    <span class="tag">Generation ${hof.generation}</span></span></div>`;
+}
+function renderLists(){
+  const catName={upgrades:'upgrades',optimisations:'optimisations',extensions:'extensions',automatisation:'automatisation'};
+  for(const cat in catName){
+    const arr=state.data.categories[cat]||[];
+    $('#list-'+cat).innerHTML=arr.map((i,idx)=>`
+      <div class="card">
+        <span class="rank">${idx+1}</span>
+        <span class="t">${i.title}</span>
+        <span class="b">${i.body}</span>
+        <div class="gauge"><i style="width:${Math.round(i.score*100)}%"></i></div>
+        <span class="meta"><span class="tag">${i.axis} · ${i.scale}</span>
+        <span class="tag">Impact ${i.impact}</span><span class="tag">Machbar ${i.feasibility}</span>
+        <span class="score">${i.score}</span></span>
+      </div>`).join('');
+  }
+}
+const TOOLS={
+  loops:['🧬 Nightly-Evolution-Loop','🐝 Symbiom-Schwarm-Ping','🧠 Neuro-Cortex-Zyklus','🛡 Immun-Scan','💰 Budget-Guard Tick'],
+  workflows:['Nachtlauf: Cajon→Fitness→Promote','Co-Evolution: Code⇄Prompt','Adversarial-Rollout','Skill-Extraktion','Report+Hall-of-Fame'],
+  templates:['Parser-Seed (parse_fasta)','Format-Spec (GFF3/VCF)','Champion-Template','MCTS-Prompt','Reporter-HTML'],
+  designs:['12-Layer-Architektur','DNA=mRNA=Proteom','Symbiom-Nischen','Hall-of-Fame-Meta','3×3 MCTS Forest'],
+};
+function renderToolbox(){
+  for(const t in TOOLS){
+    $('#d-'+t).innerHTML=TOOLS[t].map(x=>`<div class="f"><b>${x.split(' ')[0]}</b>${x}</div>`).join('');
+  }
+}
+function renderTrees(){
+  const T=state.tree; if(!T) return;
+  $('#treegrid').innerHTML=(T.children||[]).map(cat=>`
+    <div class="tree"><div class="th" style="color:var(--acc)">${cat.name}</div>
+    <pre>${treeToText(cat)}</pre></div>`).join('');
+}
+function treeToText(node,ind=0){
+  let s='';
+  (node.children||[]).slice(0,6).forEach(c=>{
+    s+='  '.repeat(ind)+'· '+c.name+'\n';
+    s+=treeToText(c,ind+1);
+  });
+  return s.slice(0,600);
+}
+function caps(s){return s[0].toUpperCase()+s.slice(1)}
+
+/* ---------- Navigation ---------- */
+$$('.navbtn').forEach(b=>b.addEventListener('click',()=>{
+  $$('.navbtn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); setView(b.dataset.view);
+}));
+function setView(v){
+  state.active=v;
+  $$('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));
+  $('#views').scrollTo(0,0); main.scrollTo(0,0);
+}
+
+/* ---------- Horizontal / Vertikal (Auto-Scale) ---------- */
+function setMode(m,manual){
+  state.mode=m; document.body.className=m;
+  $$('.mbtn').forEach(x=>x.classList.toggle('active',x.dataset.mode===m));
+  if(manual){
+    // Auto-Orientierung voruebergehend ueberstimmen
+  }
+}
+$$('.mbtn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode,true)));
+
+/* Orientation / Viewport auto-detection für Auto-Scale */
+function autoOrient(){
+  const land = matchMedia('(orientation: landscape)').matches;
+  const longEdge = Math.min(innerWidth,innerHeight)>=900;
+  if(!state.manualMode){ setMode(land?'horizontal':'vertical',false); }
+}
+window.addEventListener('resize',()=>{
+  autoOrient();
+  // dynamische CSS-Anpassung erfolgt via clamp()/dvh automatisch
+});
+window.addEventListener('orientationchange',()=>setTimeout(autoOrient,200));
+
+loadShape(); loadStats(); autoOrient();
+setInterval(loadStats,10000);
+</script>
+</body>
+</html>

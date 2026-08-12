@@ -625,4 +625,182 @@ Design (Forschung 2026):
 
 ---
 
-*Technische Doku v1.8 - 2026-08-11 (v5 Phase 5: Tool-Registry + Agent)*
+## 17. v5 Phase 6: Practical Co-Evolution
+
+### 17.1 `autonomous_organism.py` (Nightly ⇄ Co-Evolution)
+
+| Baustein | Verantwortung |
+|---|---|
+| `NightlyEvolution.run_nightly(coevolve=True)` | nach der Code-Evolution optional die Prompt↔Code-Co-Evolution starten |
+| `NightlyEvolution._run_coevolution(tests, ...)` | `co_evolution.evolve` mit denselben (Failure-)Tests; persistiert `prompt_hint` + `coevolution` (best_prompt, co_score) im Memory |
+| `cmd_evolve_now` / CLI `--no-coevolve` | `run_nightly(coevolve=not args.no_coevolve)` — Flag sauber verdrahtet |
+
+### 17.2 `10_symbiom/co_evolution.py`
+
+`evolve(rounds, swarm_generations, pop_per_species, tests=None)`:
+- `tests=None` → Basis-Tests des Organs; sonst externe Testsets durchreichen
+  (echter Selektionsdruck aus nightly-Failures).
+- Bugfix: `Symbiont.lineage`-Feld in `10_symbiom/symbiom_swarm.py` ergänzt
+  (Provenienz je Spezialist).
+
+### 17.3 Testabdeckung
+
+- `tests/test_practical_coevolution.py`: 8 Tests (Seed parst, Default-/
+  externe Tests, History-Form, Prompt-Hint, Nightly-Integration,
+  `coevolve=False`-Pfad, kaputte Tests crashen nicht)
+- Gesamtstand: `make test` → **109 Tests** (101 v5-P5 + 8 v5-P6)
+
+---
+
+## 18. v6 Layer 13: UI + MCTS-Idea-Forest + Mindmap
+
+Neuer Phenotyp-Layer: 400 Ideen (Top 100 × 4 Kategorien) aus einem
+**3×3-Monte-Carlo-Tree-Wald** über der Codebase.
+
+### 18.1 `13_ui/idea_seeds.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `Gene` | Codebase-groundetes Ideen-Gen: name, desc, layer (09..12/core/api), axis (core/data/ops), scale (atomic/component/system), impact, feasibility, tags |
+| `SEEDS` / `seed_pool(axis=, scale=)` | 26 Seeds mit Layer-Bezug; Filter-Fabrik für den Wald |
+
+### 18.2 `13_ui/mcts_idea_forest.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `MCTSNode.ucb1` | Exploration/Exploitation (`c=1.4`) |
+| `op_merge` / `op_specialize` / `op_cross` / `op_category` | 4 Mutationsoperatoren: hybridisieren, konkretisieren, Cross-Pollination auf andere Layer, Kategorie-Framing |
+| `IdeaMCTS` | selection → expansion → simulation → backpropagation (visits/value) |
+| `idea_fitness` | kategorienspezifische Gewichtung (Upgrades=Tiefe, Optimisations=Machbarkeit, Extensions=Neuheit, Automatisation=Automatisierbarkeit) |
+| `run_forest` | 3×3 Wald (9 Bäume, `iterations_per_tree`), Dedup, Top-100-Ranking je Kategorie |
+| `build_forest_output` | Artefakte → `reports/brainstorm_v6/top100.json` |
+
+### 18.3 `13_ui/mindmap.py`
+
+`build_tree` → verschachtelter JSON-Baum; `to_mermaid` → `mindmap.mmd`;
+self-contained HTML (inline SVG, pan/zoom, Tooltips, kein CDN) → `mindmap.html` +
+`mindmap_tree.json`.
+
+### 18.4 API + CLI
+
+| Endpoint / CLI | Funktion |
+|---|---|
+| `python app.py brainstorm --iterations N --seed N` | Wald + Mindmap generieren |
+| `GET /ui` | responsive UI (`13_ui/static/index.html`) |
+| `GET /brainstorm/top100.json` | Top 100 × 4 Kategorien |
+| `GET /brainstorm/mindmap_tree.json` | JSON-Baum |
+| `GET /brainstorm/mindmap` | Mermaid/HTML-Ansicht |
+
+### 18.5 Testabdeckung
+
+- `tests/test_ui_and_brainstorm.py`: 11 Tests (Seeds, UCB1, Operatoren, Wald-
+  Ränge, Mindmap-Artefakte, API-Endpoints, UI-Template)
+- Gesamtstand: `make test` → **120 Tests** (109 v5-P6 + 11 v6)
+
+---
+
+## 19. v6 Regression-Loop & Code-Qualitaet
+
+### 19.1 `tools/regression_loop.py`
+
+| Phase | Verantwortung |
+|---|---|
+| `compile_all` | alle `.py` syntaktisch pruefen |
+| `AuditVisitor` | bare `except:`, silent `pass`, ungenutzte Imports, doppelte Funktionen, tote Dateien |
+| `audit_duplicates` | Duplikat-Dateien erkennen (normalisierte Hashes) |
+| `run_pytest` | volle Suite inkl. Regression + UI + API |
+| `--loop N` / `--fix` | N Runden bis Konvergenz; einfache Audits in-place reparieren |
+| `PY_SKIP` / `CHECKPOINT_FILES` | Legacy-Checkpoints (`organic_ai_os_evolving*.py`, `neuro_evolving_1.py`, …) werden kompiliert/getestet, aber nicht style-auditiert |
+
+### 19.2 Behandelte Befunde
+
+- ~20 bare `except:` → `except Exception` (u. a. `09_neuro/neuro_evolving.py`)
+- explizite LLM-Fallbacks (`11_evolution/llm_evolver.py`, `skill_library.py`)
+- tote Duplikate entfernt: `11_evolution/llm_evolver_1.py`, `llm_evolver_2.py`,
+  `fasta_evolved_final_1.py`
+- Dedup Seed/Basis-Tests via `_seed_parse_fasta()`/`_basic_tests()` in
+  `app.py` + `tool_registry.py`
+
+### 19.3 Tooling
+
+- Makefile: `test-loop`, `fix`
+- CI: `.github/workflows/ci.yml` — compileall aller Layer (inkl. core/13_ui)
+  + Weak-Code-Audit-Schritt
+- Gesamtstand: `make test` → **122 Tests** (alle Layer inkl. core + 13_ui)
+
+---
+
+## 20. v6 Phase A: Validierungs-Schema
+
+### 20.1 `validation_schema.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `ValidationRule` | benannte Regel: `check(record_id, record) -> bool` + detail |
+| `ValidationReport` | ok/violated/violations + `to_dict()` fuer CLI/API |
+| `RecordSchema` | Buendel: name, format, rules, description |
+| `_rule_alphabet` | IUPAC-Alphabet (ACGTURYSWKMBDHVN) |
+| `_rule_nonempty` | leere Sequenz melden |
+| `_rule_unique_headers` | Duplikat-Header (State via Closure) |
+| `_rule_qual_length` | FASTQ: Qualitaetslaenge == Sequenzlaenge |
+| `_rule_max_seq_len` | optionale Laengen-Grenze |
+| `default_schemas`/`list_schemas` | Registry (fasta/fastq) |
+| `validate_records` | Records gegen Schema; Exception im Rule = violation |
+| `validate_content` | Auto-Detect + parse (bio_formats) + validate |
+
+### 20.2 API + CLI + Tool
+
+- `POST /validate` (pydantic `ValidateRequest`, `schema_name` mit Alias `schema`)
+- `python app.py validate <file> [--schema fasta|fastq|auto] [--max-len N]`
+- `validate_tool(filepath, schema)` in `tool_registry.py`
+
+## 21. v6 Phase A: Fitness-Fruehwarnung
+
+### 21.1 `11_evolution/fitness_guard.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `FitnessGuard.check_candidate` | promote/hold/reject (lethal / score-drop / below-baseline / new-best) |
+| `drop_threshold` | absolute Abweichung (Default 0.05) fuer den Alarm |
+| `allows_promotion` | bool-Helfer fuer Evolution/CLI |
+| `best`/`alarms`/`history` | persistente Baseline + Alarmzaehler + Verlauf |
+| `save`/`load`/`summary` | `memory/fitness_guard.json` (history cap 200) |
+
+### 21.2 Integration (Nightly)
+
+`NightlyEvolution.run_nightly()` konsultiert den Guard vor der Promotion:
+`verdict = guard.check_candidate(name=winner.name, fitness=new_score, baseline=old_score)`.
+Promotion nur bei `new_score >= old_score AND decision == "promote"`;
+`score-drop`-Rejects werden als ALARM geloggt (kein Parser-Ersatz).
+
+### 21.3 CLI + Tool
+
+- `python app.py fitness-guard [--check F --baseline B --name N]`
+- `fitness_guard_tool(fitness, baseline, name)` in `tool_registry.py`
+
+## 22. v6 Phase A: REST-Dashboard
+
+### 22.1 `13_ui/dashboard.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `build_dashboard_data` | KPI-Summary aus Memory/HoF/Skills/Symbiom/Guard |
+| `render_dashboard_html` | self-contained HTML (inline CSS/JS, KPI-Tiles, Fitness-Bars, Guard-Log, kein CDN) |
+| `build_files` | `reports/dashboard/dashboard.html` + `dashboard.json` |
+
+### 22.2 API + CLI + Tool
+
+- `GET /dashboard` (HTML), `GET /dashboard/summary` (JSON), `GET /dashboard/guard`
+- `python app.py dashboard`
+- `dashboard_tool()` in `tool_registry.py`
+
+### 22.3 Testabdeckung (v6 Phase A)
+
+- `tests/test_validation_schema.py`: 12 Tests
+- `tests/test_fitness_guard.py`: 8 Tests
+- `tests/test_dashboard.py`: 8 Tests
+- Gesamtstand: `make test` → **150 Tests** (122 v6 + 28 v6-A)
+
+---
+
+*Technische Doku v2.1 - 2026-08-11 (v6 Phase A: Validierungs-Schema + Fitness-Fruehwarnung + REST-Dashboard)*

@@ -14,7 +14,9 @@ Endpoints:
 """
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 from pathlib import Path
 import json
 import time
@@ -24,11 +26,16 @@ import sys
 
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "13_ui"))
 
 import bio_formats
+import validation_schema
+import dashboard
 
 MEMORY_DIR = ROOT / "memory"
 INBOX_DIR = ROOT / "fasta_inbox"
+UI_DIR = ROOT / "13_ui" / "static"
+BRAINSTORM_DIR = ROOT / "reports" / "brainstorm_v6"
 
 app = FastAPI(title="Organic Organism API", version="2.0.0")
 
@@ -63,6 +70,11 @@ class ParseRequest(BaseModel):
     filename: str = "api_input"
 
 
+class ValidateRequest(BaseModel):
+    content: str
+    schema_name: str = Field(default="auto", alias="schema")
+
+
 @app.post("/parse")
 def parse(req: ParseRequest):
     """Parst Sequenzdaten: body = rohe FASTA/FASTQ Text."""
@@ -71,6 +83,18 @@ def parse(req: ParseRequest):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"parse failed: {e}")
     return {"format": fmt, "records": len(records), "filename": req.filename, "parsed": records}
+
+
+@app.post("/validate")
+def validate(req: ValidateRequest):
+    """Validiert geparste Records gegen ein Schema (FASTA/FASTQ, v6)."""
+    try:
+        report = validation_schema.validate_content(req.content, schema=req.schema_name)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"validate failed: {e}")
+    return report.to_dict()
 
 
 @app.get("/stats")
@@ -122,6 +146,71 @@ def history():
 def inbox():
     files = sorted(INBOX_DIR.glob("*.fa*"))
     return {"count": len(files), "files": [f.name for f in files]}
+
+
+# ---------------------------------------------------------------------------
+# LAYER 13 UI — Responsive Evolution Console
+# ---------------------------------------------------------------------------
+@app.get("/ui")
+def ui():
+    """Responsive, auto-skalierende UI (horizontal/vertikal)."""
+    index = UI_DIR / "index.html"
+    if not index.exists():
+        raise HTTPException(404, "UI not built")
+    return FileResponse(index)
+
+
+@app.get("/brainstorm/top100.json")
+def brainstorm_top100():
+    f = BRAINSTORM_DIR / "top100.json"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse(json.loads(f.read_text()))
+
+
+@app.get("/brainstorm/mindmap_tree.json")
+def brainstorm_tree():
+    f = BRAINSTORM_DIR / "mindmap_tree.json"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse(json.loads(f.read_text()))
+
+
+@app.get("/brainstorm/mindmap")
+def brainstorm_mindmap():
+    """Menschenlesbares Mindmap (Markdown)."""
+    f = BRAINSTORM_DIR / "mindmap.md"
+    if not f.exists():
+        raise HTTPException(404, "run `python app.py brainstorm` first")
+    return JSONResponse({"mindmap": f.read_text()})
+
+
+# ---------------------------------------------------------------------------
+# v6 REST-DASHBOARD — KPI-Tiles + Fitness-Historie + Fruehwarnung
+# ---------------------------------------------------------------------------
+@app.get("/dashboard")
+def dashboard_page():
+    """Self-contained Dashboard (HTML)."""
+    data = dashboard.build_dashboard_data(str(MEMORY_DIR))
+    return HTMLResponse(dashboard.render_dashboard_html(data))
+
+
+@app.get("/dashboard/summary")
+def dashboard_summary():
+    """Dashboard-Summary als JSON (alle KPIs + Verlaeufe)."""
+    return JSONResponse(dashboard.build_dashboard_data(str(MEMORY_DIR)))
+
+
+@app.get("/dashboard/guard")
+def dashboard_guard():
+    """Zustand der Fitness-Fruehwarnung (baseline, alarms, history)."""
+    guard_file = MEMORY_DIR / "fitness_guard.json"
+    data = json.loads(guard_file.read_text()) if guard_file.exists() else {}
+    return JSONResponse({"guard": data})
+
+
+if UI_DIR.exists():
+    app.mount("/ui/static", StaticFiles(directory=UI_DIR), name="ui-static")
 
 
 if __name__ == "__main__":

@@ -10,8 +10,6 @@ import random
 import re
 from dataclasses import dataclass, field
 from typing import List, Callable, Dict, Tuple
-import time
-import json
 
 @dataclass
 class Strand:
@@ -42,7 +40,7 @@ class FitnessEvaluator:
         try:
             ast.parse(code)
             score += 1.0 * 0.2
-        except:
+        except Exception:
             return 0.0  # lethal mutation
         total_weight += 0.2
         
@@ -149,7 +147,7 @@ class LLMMutator:
                 new_code = "\n".join(lines)
             
             return new_code
-        except:
+        except Exception:
             # Wenn AST failt: einfache Textmutation
             lines = code.splitlines()
             if lines:
@@ -216,13 +214,14 @@ Erzeuge ein Kind das beide Stärken kombiniert.
         lines_b = b.code.splitlines()
         mid = len(lines_a)//2
         child_code = "\n".join(lines_a[:mid] + lines_b[mid:])
+        fallback = child_code
         
-        # Versuche LLM
+        # Versuche LLM; bei Fehler bleibt der Merged-Fallback aktiv
         try:
             child_code = self._call_llm("Crossover Experte", prompt)
             child_code = re.sub(r"^```python|^```|```$", "", child_code, flags=re.MULTILINE).strip()
-        except:
-            pass
+        except Exception:
+            child_code = fallback
         
         return Strand(
             name=f"{a.name}x{b.name}_g{max(a.generation,b.generation)+1}",
@@ -325,7 +324,8 @@ def gc_content(seq):
         fn = ns["gc_content"]
         try:
             return abs(fn("GGCCAA") - 0.666) < 0.01
-        except: return False
+        except Exception:
+            return False
     tests = [(test_correctness, 0.8)]
     engine = EvolutionEngine(population_size=6, mutator=LLMMutator("fallback"))
     engine.seed(initial, name="gc_adam")

@@ -1,7 +1,4 @@
 """Tests fuer den MCTS-Evolutions-Kern (v5, Layer 11)."""
-import sys
-
-import mcts_evolver
 from mcts_evolver import BizFitness, MCTNode, MCTSEvolution
 from llm_evolver import FitnessEvaluator, Strand
 

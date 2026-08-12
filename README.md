@@ -1,18 +1,18 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Bio-Inspired-Organic%20Code-brightgreen?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Layer-12%20Layer%20OS-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/v4-optimisations-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Layer-13%20Layer%20OS-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/v6-UI%20%2B%20Idea--Forest-brightgreen?style=for-the-badge" />
 </p>
 
 <h1 align="center">🧬 Organic AI OS</h1>
 
 <p align="center">
   <strong>Code = DNA | Prompts = mRNA | LLM = Ribosom</strong><br>
-  Eine selbst-evolvierende 12-Layer AI Plattform für Bioinformatik
+  Eine selbst-evolvierende 13-Layer AI Plattform für Bioinformatik
 </p>
 
 <p align="center">
-  <a href="https://github.com/oghighzenberg1982/organic-ai-os"><img src="https://img.shields.io/github/stars/oghighzenberg1982/organic-ai-os?style=social" /></a>
+  <a href="https://github.com/unifiedcosmosai-ceo/organic-ai-os"><img src="https://img.shields.io/github/stars/unifiedcosmosai-ceo/organic-ai-os?style=social" /></a>
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg" />
   <img src="https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white" />
   <img src="https://img.shields.io/badge/ollama-codellama%3A7b-orange" />
@@ -35,7 +35,7 @@
 ## ⚡ Quickstart (30 Sekunden)
 
 ```bash
-git clone https://github.com/oghighzenberg1982/organic-ai-os.git
+git clone https://github.com/unifiedcosmosai-ceo/organic-ai-os.git
 cd organic-ai-os
 
 # Starten
@@ -170,6 +170,60 @@ python app.py agent --list-tools             # verfügbare Tools
 make test      # 101 Tests (83 v5-P4 + 18 v5-P5)
 ```
 
+### v5 Phase 6 (Practical Co-Evolution)
+
+- **🌀 Praktische Co-Evolution** — die *nächtliche Evolution* koppelt jetzt echt an Layer 09/10: `NightlyEvolution.run_nightly(coevolve=True)` startet nach der Code-Evolution eine Prompt↔Code-Co-Evolution (`_run_coevolution`) und persistiert `prompt_hint` + `coevolution` im Memory
+- **🔌 Externe Testsets** — `co_evolution.evolve(..., tests=None)` nimmt eigene Tests (z. B. aus echten Nightly-Failures) statt nur Defaults
+- **🧬 Debug-Fixes** — `Symbiont.lineage`-Feld ergänzt; `--no-coevolve`-Flag korrekt verdrahtet
+
+```bash
+python app.py evolve-now                # Nightly + Co-Evolution
+python app.py evolve-now --no-coevolve  # nur Code-Evolution
+make test      # 109 Tests (101 v5-P5 + 8 v5-P6)
+```
+
+### v6 Layer 13 (UI + MCTS-Idea-Forest)
+
+- **🌳 3×3 MCTS-Ideenwald** — `13_ui/mcts_idea_forest.py`: 9 Bäume (Achse core/data/ops × Skala atomic/component/system), UCB1-Selection und 4 Mutationsoperatoren (merge/specialize/cross/category) erzeugen **Top 100 × 4 Kategorien** (Upgrades · Optimisations · Extensions · Automatisation)
+- **🧬 Codebase-groundete Seeds** — `13_ui/idea_seeds.py`: 26 Ideen-Gene mit Layer-Bezug (09..12, core, api), Impact & Machbarkeit
+- **🗺️ Mindmap-Generator** — `13_ui/mindmap.py`: `mindmap.md`, `mindmap.mmd` (Mermaid), `mindmap.html` (self-contained, pan/zoom, Tooltips) + `mindmap_tree.json`
+- **🖥️ Responsive UI** — `13_ui/static/index.html` unter `/ui`
+- **🌐 API** — `/ui`, `/brainstorm/top100.json`, `/brainstorm/mindmap_tree.json`, `/brainstorm/mindmap`
+
+```bash
+python app.py brainstorm --iterations 400 --seed 42   # Ideenwald + Mindmap
+python app.py serve                                   # dann: http://localhost:8000/ui
+# → reports/brainstorm_v6/ (top100.json, mindmap.md/.mmd/.html, mindmap_tree.json)
+make test      # 120 Tests (109 v5-P6 + 11 v6)
+```
+
+### v6 Code-Qualitaet (Regression-Loop)
+
+- **🔁 Automatischer Qualitaets-Zyklus** — `tools/regression_loop.py`: COMPILE (alle `.py`) → AUDIT (bare `except`, silent `pass`, ungenutzte Imports, doppelte Funktionen/Dateien) → TEST (volle Suite) → REPORT; `--loop N` und `--fix` für Selbst-Heilung
+- **🧹 Weak-Code-Audit** — alle bisherigen Befunde behoben: ~20 bare `except:` → `except Exception`, explizite LLM-Fallbacks, tote Duplikate entfernt (`llm_evolver_1/_2`, `fasta_evolved_final_1`)
+- **⚙️ CI** — Weak-Code-Audit-Schritt in `.github/workflows/ci.yml`
+
+```bash
+make test-loop   # Regression-Loop (1 Runde)
+make fix         # Audits automatisch reparieren
+make test        # 122 Tests (alle Layer inkl. core + 13_ui)
+```
+
+### v6 Phase A (Top-Ideen: Validierung · Fruehwarnung · Dashboard)
+
+Die drei Top-Ideen aus dem MCTS-Idea-Forest (upgrades/optimisations/extensions/automatisation) sind umgesetzt:
+
+- **🧬 Validierungs-Schema** — `validation_schema.py`: schemabasierte Records-Validierung (IUPAC-Alphabet, nicht-leer, eindeutige Header, FASTQ-Qualitaetslaenge, `max_seq_len`); `python app.py validate <file> [--schema fasta|fastq|auto]`, `POST /validate`
+- **🚨 Fitness-Fruehwarnung** — `11_evolution/fitness_guard.py`: Score-Drop-Alarm **vor** Promotion (promote/hold/reject), persistente Baseline `memory/fitness_guard.json`; in `run_nightly()` integriert; `python app.py fitness-guard [--check F --baseline B]`
+- **📊 REST-Dashboard** — `13_ui/dashboard.py`: self-contained KPI-Dashboard (HTML + JSON) aus Memory/HoF/Skills/Guard; `GET /dashboard`, `/dashboard/summary`, `/dashboard/guard`; `python app.py dashboard`
+
+```bash
+python app.py validate fasta_inbox/example_messy.fasta
+python app.py fitness-guard --check 0.9
+python app.py dashboard
+make test        # 150 Tests (122 v6 + 28 v6-A)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat
@@ -215,27 +269,29 @@ def parse_fasta(text):
 
 ---
 
-## 🏗️ Architektur - 12 Layer wie eine Zelle
+## 🏗️ Architektur - 13 Layer wie eine Zelle
 
 ```
-┌─────────────────────────────────┐
-│ 12 PHÄNOTYP - UI / API           │ ← FastAPI
-├─────────────────────────────────┤
-│ 11 EVOLUTION - LLM Mutator       │ ← codellama:7b
-├─────────────────────────────────┤
-│ 10 SYMBIOM - Multi-Agent         │
-│ 09 NEURO - Prompt Cortex ★       │ ← evolvierbar
-├─────────────────────────────────┤
-│ 08 IMMUNSYSTEM - Auto-Heal      │
-│ 07 MITOCHONDRIUM - Compute      │
-│ 06 MEMBRAN - API Boundary       │
-├─────────────────────────────────┤
-│ 05 EPIGENOM - Regulation        │
-│ 04 METABOLOM - Memory           │
-│ 03 PROTEOM - Worker ★           │ ← evolvierbar
-│ 02 TRANSKRIPTOM - AST → Exec    │
-│ 01 GENOM - Code als DNA         │
-└─────────────────────────────────┘
+┌─────────────────────────────────────┐
+│ 13 UI / BRAINSTORM - Idea-Forest    │ ← MCTS 3x3 + Mindmap
+├─────────────────────────────────────┤
+│ 12 PHÄNOTYP - UI / API              │ ← FastAPI
+├─────────────────────────────────────┤
+│ 11 EVOLUTION - LLM Mutator          │ ← codellama:7b
+├─────────────────────────────────────┤
+│ 10 SYMBIOM - Multi-Agent            │
+│ 09 NEURO - Prompt Cortex ★          │ ← evolvierbar
+├─────────────────────────────────────┤
+│ 08 IMMUNSYSTEM - Auto-Heal          │
+│ 07 MITOCHONDRIUM - Compute          │
+│ 06 MEMBRAN - API Boundary           │
+├─────────────────────────────────────┤
+│ 05 EPIGENOM - Regulation            │
+│ 04 METABOLOM - Memory               │
+│ 03 PROTEOM - Worker ★               │ ← evolvierbar
+│ 02 TRANSKRIPTOM - AST → Exec        │
+│ 01 GENOM - Code als DNA             │
+└─────────────────────────────────────┘
   ★ = selbst-evolvierend
 ```
 

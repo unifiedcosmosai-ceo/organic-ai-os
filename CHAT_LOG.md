@@ -280,6 +280,13 @@ status --json → {"evolution_count": ..., "files_seen": ..., "hall_of_fame": [.
 │   ├── fasta_evolved_final.py (Winner 1.19 Fitness)
 │   └── ollama_integration.py
 ├── 12_phaenotyp/
+├── 13_ui/ (v6: UI + MCTS-Idea-Forest + Mindmap)
+│   ├── idea_seeds.py (26 codebase-groundete Ideen-Gene)
+│   ├── mcts_idea_forest.py (3x3 MCTS-Wald → Top 100 x 4)
+│   ├── mindmap.py (mindmap.md/.mmd/.html/tree.json)
+│   └── static/index.html (responsive UI)
+├── tools/
+│   └── regression_loop.py (v6: COMPILE → AUDIT → TEST → REPORT, --fix)
 ├── fasta_inbox/ (Live Watch Ordner)
 │   ├── example_clean.fasta
 │   ├── example_messy.fasta
@@ -503,4 +510,122 @@ python app.py parse-spec sample.gff
 python app.py agent status specs budget --seed 7
 # ✅ status | ✅ specs | ✅ budget
 # 📦 Replay-Bundle: memory/replay_log.json | Calls: 3 | Failed: 0 | Verify: True
+```
+
+## 19. v5 Phase 6: Practical Co-Evolution (Nightly ⇄ Layer 09/10)
+
+**User:** merge PR #10 → Practical Co-Evolution an die naechtliche Evolution andocken
+
+**Assistant:**
+- **Branch**: `v5/practical-coevolve` (aus `main` nach Merge PR #10)
+- **`autonomous_organism.py`**: `run_nightly(coevolve=True)` startet nach der
+  Code-Evolution `_run_coevolution(tests, old_score, new_score)` → persistiert
+  `prompt_hint` + `coevolution` (best_prompt, co_score) in `organism_memory.json`
+- **`co_evolution.py`**: `evolve(..., tests=None)` durchreicht externe Testsets
+  (echte nightly-Failures als Selektionsdruck)
+- **`symbiom_swarm.py`**: `Symbiont.lineage`-Feld ergänzt (Provenienz)
+- **`app.py`**: `--no-coevolve`-Flag korrekt verdrahtet
+  (`coevolve=not getattr(args, "no_coevolve", False)`)
+- **Tests**: `tests/test_practical_coevolution.py` (8 Tests); `make test` → **109 passed**
+- **Doku**: README „v5 Phase 6", MANUAL §17, DOCS §17, CHAT_LOG §19
+
+### Demonstriert
+```
+109 passed in ~4s
+run_nightly(coevolve=True) → prompt_hint + coevolution im Memory
+co_evolution.evolve(..., tests=[(_t_parse, 0.6), (_t_messy, 0.4)]) → code.fit>0.5
+```
+
+## 20. v6 Layer 13: UI + MCTS-Idea-Forest + Mindmap
+
+**User:** (neue v6-Serie) Layer 13 UI + Brainstorm mit MCTS-Ideenwald
+
+**Assistant:**
+- **Branch**: `v5/practical-coevolve` (fortgesetzt)
+- **`13_ui/idea_seeds.py`**: 26 codebase-groundete Ideen-Gene (layer 09..12/core/api,
+  Achse core/data/ops, Skala atomic/component/system, impact/feasibility)
+- **`13_ui/mcts_idea_forest.py`**: 3×3-MCTS-Wald (9 Bäume), UCB1, 4 Operatoren
+  (merge/specialize/cross/category), `idea_fitness` mit kategoriespezifischen
+  Gewichten → **Top 100 × 4** (Upgrades/Optimisations/Extensions/Automatisation)
+- **`13_ui/mindmap.py`**: `mindmap.md` + `mindmap.mmd` (Mermaid) +
+  `mindmap.html` (self-contained, inline-SVG, pan/zoom, Tooltips) +
+  `mindmap_tree.json`
+- **`13_ui/static/index.html`**: responsive, auto-skalierende UI (horiz/vertikal)
+- **API**: `/ui`, `/brainstorm/top100.json`, `/brainstorm/mindmap_tree.json`,
+  `/brainstorm/mindmap`; **CLI**: `app.py brainstorm --iterations N --seed N`
+- **Artefakte**: `reports/brainstorm_v6/`
+- **Tests**: `tests/test_ui_and_brainstorm.py` (11 Tests); `make test` → **120 passed**
+- **conftest**: `13_ui` in sys.path
+- **Doku**: README „v6 Layer 13", MANUAL §18, DOCS §18, CHAT_LOG §20
+
+### Demonstriert
+```
+120 passed in ~5s
+python app.py brainstorm --iterations 400 --seed 42
+# upgrades: 100 | optimisations: 100 | extensions: 100 | automatisation: 100
+# Artefakte -> reports/brainstorm_v6/ (top100.json, mindmap.md/.mmd/.html, mindmap_tree.json)
+GET /ui → 200
+```
+
+## 21. v6 Code-Qualitaet: Regression-Loop & Weak-Code-Audit
+
+**User:** Qualitaets-Loop bauen, der die ganze Plattform selbst testet + saeubert
+
+**Assistant:**
+- **Branch**: `v5/practical-coevolve` (fortgesetzt)
+- **`tools/regression_loop.py`**: COMPILE (alle `.py`) → AUDIT (bare `except`,
+  silent `pass`, ungenutzte Imports, doppelte Funktionen/Dateien) → TEST →
+  REPORT; `--loop N`, `--fix`
+- **Behoben**: ~20 bare `except:` → `except Exception` (inkl. `neuro_evolving.py`),
+  explizite LLM-Fallbacks, tote Duplikate entfernt (`llm_evolver_1/_2`,
+  `fasta_evolved_final_1`), Seed/Basis-Tests dedupliziert (`_seed_parse_fasta`,
+  `_basic_tests`)
+- **Makefile**: `test-loop`, `fix`; **CI**: Weak-Code-Audit-Schritt in
+  `ci.yml` (compileall aller Layer inkl. core/13_ui)
+- **Regression-Tests erweitert**: keine bare `except:`, kein toter Ollama-Stub,
+  Regression-Loop-Tool phasengruen; Legacy-Checkpoints vom Style-Audit
+  ausgenommen (CHECKPOINT_FILES)
+- **Tests**: `make test` → **122 passed**
+- **Doku**: README „v6 Code-Qualitaet", MANUAL §19, DOCS §19, CHAT_LOG §21
+
+### Demonstriert
+```
+122 passed in ~5.3s
+make test-loop  → COMPILE 0 | AUDIT 0 | TEST 122 passed
+python3 tools/regression_loop.py --loop 3 → konvergiert mit 0 Fehlern
+```
+
+## 22. v6 Phase A: Top-Ideen (Validierungs-Schema + Fitness-Fruehwarnung + REST-Dashboard)
+
+**User:** (Fortsetzung v6) die Top-Ideen des MCTS-Idea-Forest umsetzen
+
+**Assistant:**
+- **Branch**: `v6/top-ideas` (aus `v5/practical-coevolve`)
+- **`validation_schema.py`**: schemabasierte Records-Validierung (IUPAC-
+  Alphabet, nonempty, unique_headers, fastq qual_length, max_seq_len);
+  `ValidationReport.to_dict()`; `validate_content` (Auto-Detect); `POST
+  /validate`, CLI `app.py validate`, `validate_tool`
+- **`11_evolution/fitness_guard.py`**: `check_candidate` → promote/hold/reject
+  (lethal/score-drop/below-baseline/new-best), persistente Baseline
+  `memory/fitness_guard.json`; in `NightlyEvolution.run_nightly()` integriert
+  (Promotion nur bei `new >= old AND promote`); CLI `app.py fitness-guard`,
+  `fitness_guard_tool`
+- **`13_ui/dashboard.py`**: self-contained KPI-Dashboard (inline CSS/JS, kein
+  CDN) mit Tiles, Fitness-Bars und Guard-Log; `GET /dashboard`,
+  `/dashboard/summary`, `/dashboard/guard`; CLI `app.py dashboard`,
+  `dashboard_tool`
+- **Makefile**: `test-validate`, `test-guard`, `test-dashboard`
+- **Tests**: 28 neue (12+8+8); `make test` → **150 passed**
+- **Doku**: README „v6 Phase A", MANUAL §20–22, DOCS §20–22, CHAT_LOG §22
+
+### Demonstriert
+```
+150 passed in ~3s
+python app.py validate fasta_inbox/example_messy.fasta
+# Format: fasta | Schema: fasta | Records: 2 | ok: True | Violations: 0
+python app.py fitness-guard --check 0.4 --baseline 0.8
+# REJECT — score-drop | fitness=0.4 baseline=0.8
+python app.py dashboard  → reports/dashboard/ (dashboard.html + dashboard.json)
+GET /dashboard/summary → {"evolution_count":..., "fitness_history":[...], "guard":{...}}
+POST /validate → {"ok": false, "violations":[{"record":"a","rule":"alphabet",...}]}
 ```
