@@ -730,4 +730,77 @@ self-contained HTML (inline SVG, pan/zoom, Tooltips, kein CDN) → `mindmap.html
 
 ---
 
-*Technische Doku v2.0 - 2026-08-11 (v5 Phase 6 + v6 Layer 13 + Regression-Loop)*
+## 20. v6 Phase A: Validierungs-Schema
+
+### 20.1 `validation_schema.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `ValidationRule` | benannte Regel: `check(record_id, record) -> bool` + detail |
+| `ValidationReport` | ok/violated/violations + `to_dict()` fuer CLI/API |
+| `RecordSchema` | Buendel: name, format, rules, description |
+| `_rule_alphabet` | IUPAC-Alphabet (ACGTURYSWKMBDHVN) |
+| `_rule_nonempty` | leere Sequenz melden |
+| `_rule_unique_headers` | Duplikat-Header (State via Closure) |
+| `_rule_qual_length` | FASTQ: Qualitaetslaenge == Sequenzlaenge |
+| `_rule_max_seq_len` | optionale Laengen-Grenze |
+| `default_schemas`/`list_schemas` | Registry (fasta/fastq) |
+| `validate_records` | Records gegen Schema; Exception im Rule = violation |
+| `validate_content` | Auto-Detect + parse (bio_formats) + validate |
+
+### 20.2 API + CLI + Tool
+
+- `POST /validate` (pydantic `ValidateRequest`, `schema_name` mit Alias `schema`)
+- `python app.py validate <file> [--schema fasta|fastq|auto] [--max-len N]`
+- `validate_tool(filepath, schema)` in `tool_registry.py`
+
+## 21. v6 Phase A: Fitness-Fruehwarnung
+
+### 21.1 `11_evolution/fitness_guard.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `FitnessGuard.check_candidate` | promote/hold/reject (lethal / score-drop / below-baseline / new-best) |
+| `drop_threshold` | absolute Abweichung (Default 0.05) fuer den Alarm |
+| `allows_promotion` | bool-Helfer fuer Evolution/CLI |
+| `best`/`alarms`/`history` | persistente Baseline + Alarmzaehler + Verlauf |
+| `save`/`load`/`summary` | `memory/fitness_guard.json` (history cap 200) |
+
+### 21.2 Integration (Nightly)
+
+`NightlyEvolution.run_nightly()` konsultiert den Guard vor der Promotion:
+`verdict = guard.check_candidate(name=winner.name, fitness=new_score, baseline=old_score)`.
+Promotion nur bei `new_score >= old_score AND decision == "promote"`;
+`score-drop`-Rejects werden als ALARM geloggt (kein Parser-Ersatz).
+
+### 21.3 CLI + Tool
+
+- `python app.py fitness-guard [--check F --baseline B --name N]`
+- `fitness_guard_tool(fitness, baseline, name)` in `tool_registry.py`
+
+## 22. v6 Phase A: REST-Dashboard
+
+### 22.1 `13_ui/dashboard.py`
+
+| Baustein | Verantwortung |
+|---|---|
+| `build_dashboard_data` | KPI-Summary aus Memory/HoF/Skills/Symbiom/Guard |
+| `render_dashboard_html` | self-contained HTML (inline CSS/JS, KPI-Tiles, Fitness-Bars, Guard-Log, kein CDN) |
+| `build_files` | `reports/dashboard/dashboard.html` + `dashboard.json` |
+
+### 22.2 API + CLI + Tool
+
+- `GET /dashboard` (HTML), `GET /dashboard/summary` (JSON), `GET /dashboard/guard`
+- `python app.py dashboard`
+- `dashboard_tool()` in `tool_registry.py`
+
+### 22.3 Testabdeckung (v6 Phase A)
+
+- `tests/test_validation_schema.py`: 12 Tests
+- `tests/test_fitness_guard.py`: 8 Tests
+- `tests/test_dashboard.py`: 8 Tests
+- Gesamtstand: `make test` → **150 Tests** (122 v6 + 28 v6-A)
+
+---
+
+*Technische Doku v2.1 - 2026-08-11 (v6 Phase A: Validierungs-Schema + Fitness-Fruehwarnung + REST-Dashboard)*

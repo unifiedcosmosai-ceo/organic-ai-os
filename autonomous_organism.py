@@ -88,6 +88,11 @@ except Exception as e:
             return self.population[0]
 
 
+# Fitness-Fruehwarnung (v6): stoppt Regression vor Promotion
+sys.path.insert(0, str(Path(__file__).parent / "11_evolution"))
+from fitness_guard import FitnessGuard
+
+
 WATCH_DIR = Path(__file__).parent / "fasta_inbox"
 MEMORY_DIR = Path(__file__).parent / "memory"
 WATCH_DIR.mkdir(exist_ok=True)
@@ -359,8 +364,16 @@ class NightlyEvolution:
             new_score = _score_code(winner.code, tests)
             
             event(logger, "EVOLUTION", f"Old Score {old_score:.3f} vs New {new_score:.3f}")
-            
-            if new_score >= old_score:
+
+            guard = FitnessGuard(path=MEMORY_DIR / "fitness_guard.json")
+            guard.load()
+            verdict = guard.check_candidate(name=winner.name, fitness=new_score,
+                                            baseline=old_score)
+            event(logger, "EVOLUTION",
+                  f"FRUEHWARNUNG {verdict['decision']} ({verdict['reason']}) "
+                  f"new={new_score:.3f} base={old_score:.3f}")
+
+            if new_score >= old_score and verdict["decision"] == "promote":
                 (MEMORY_DIR / "best_parser.py").write_text(winner.code)
                 (MEMORY_DIR / f"parser_gen_{self.memory.data['evolution_count']}.py").write_text(winner.code)
                 self.watcher.active_parser_code = winner.code
@@ -374,6 +387,11 @@ class NightlyEvolution:
                 self._save_hall_of_fame(engine, tests)
                 self.memory.save()
                 event(logger, "EVOLUTION", f"Neuer Parser übernommen - Evolution {self.memory.data['evolution_count']}")
+            elif verdict["decision"] == "reject":
+                event(logger, "EVOLUTION",
+                      f"ALARM: {winner.name} verworfen - Regressionsverdacht ({verdict['reason']})",
+                      level=logger.warning)
+                self._save_hall_of_fame(engine, tests)
             else:
                 event(logger, "EVOLUTION", "Neuer Parser schlechter - verworfen")
                 self._save_hall_of_fame(engine, tests)

@@ -229,6 +229,31 @@ def specs_tool() -> dict:
                        "columns": len(specs[n].columns)} for n in list_specs()]}
 
 
+def validate_tool(filepath: str, schema: str = "auto") -> dict:
+    import validation_schema
+    content = Path(filepath).read_text(errors="ignore")
+    report = validation_schema.validate_content(content, schema=schema)
+    return report.to_dict()
+
+
+def fitness_guard_tool(fitness: float, baseline: float = None,
+                       name: str = "candidate") -> dict:
+    sys.path.insert(0, "11_evolution")
+    from fitness_guard import FitnessGuard
+    guard = FitnessGuard()
+    guard.load()
+    res = guard.check_candidate(name=name, fitness=fitness, baseline=baseline)
+    return {"decision": res["decision"], "reason": res["reason"],
+            "fitness": res["fitness"], "baseline": res["baseline"],
+            "alarms": guard.alarms}
+
+
+def dashboard_tool() -> dict:
+    sys.path.insert(0, "13_ui")
+    import dashboard
+    return dashboard.build_dashboard_data()
+
+
 def make_agent(tools: Optional[Dict[str, Callable]] = None,
                replay_path: Optional[Path] = None, seed: Optional[int] = None) -> ToolRegistry:
     """Fabrik: Agent mit Standard-Tools + Replay-Log."""
@@ -241,6 +266,9 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "skill_library": skill_library_tool,
         "budget": budget_tool,
         "specs": specs_tool,
+        "validate": validate_tool,
+        "fitness_guard": fitness_guard_tool,
+        "dashboard": dashboard_tool,
     }
     if tools:
         default.update(tools)
@@ -252,6 +280,9 @@ def make_agent(tools: Optional[Dict[str, Callable]] = None,
         "skill_library": "MCTS-Rollouts -> verifizierte Skills",
         "budget": "Budget-begrenzter MCTS-Run",
         "specs": "Registrierte Format-Specs",
+        "validate": "Records gegen Schema validieren (FASTA/FASTQ)",
+        "fitness_guard": "Kandidaten gegen Fruehwarnung pruefen",
+        "dashboard": "Dashboard-Summary (KPI-Tiles)",
     }
     reg.register_all(default, descriptions)
     return reg

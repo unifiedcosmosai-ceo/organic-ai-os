@@ -1,4 +1,4 @@
-.PHONY: all test test-loop test-regression test-mcts test-skills test-budget test-spec test-tools coverage run parse evolve-now report clean
+.PHONY: all test test-loop test-regression test-mcts test-skills test-budget test-spec test-tools test-ui test-validate test-guard test-dashboard coverage run parse evolve-now report clean
 
 # Automatische Unit- + Regressions-Tests (CI-Einstieg)
 all: test
@@ -42,6 +42,22 @@ test-tools:
 # Nur API-Tests
 test-api:
 	python3 -m pytest tests/test_api.py -v
+
+# Nur UI + Brainstorm-Suite (v6)
+test-ui:
+	python3 -m pytest tests/test_ui_and_brainstorm.py -v
+
+# Nur Validierungs-Schema-Suite (v6)
+test-validate:
+	python3 -m pytest tests/test_validation_schema.py -v
+
+# Nur Fitness-Fruehwarnungs-Suite (v6)
+test-guard:
+	python3 -m pytest tests/test_fitness_guard.py -v
+
+# Nur Dashboard-Suite (v6)
+test-dashboard:
+	python3 -m pytest tests/test_dashboard.py -v
 
 # Coverage anzeigen
 coverage:

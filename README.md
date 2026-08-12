@@ -209,6 +209,21 @@ make fix         # Audits automatisch reparieren
 make test        # 122 Tests (alle Layer inkl. core + 13_ui)
 ```
 
+### v6 Phase A (Top-Ideen: Validierung · Fruehwarnung · Dashboard)
+
+Die drei Top-Ideen aus dem MCTS-Idea-Forest (upgrades/optimisations/extensions/automatisation) sind umgesetzt:
+
+- **🧬 Validierungs-Schema** — `validation_schema.py`: schemabasierte Records-Validierung (IUPAC-Alphabet, nicht-leer, eindeutige Header, FASTQ-Qualitaetslaenge, `max_seq_len`); `python app.py validate <file> [--schema fasta|fastq|auto]`, `POST /validate`
+- **🚨 Fitness-Fruehwarnung** — `11_evolution/fitness_guard.py`: Score-Drop-Alarm **vor** Promotion (promote/hold/reject), persistente Baseline `memory/fitness_guard.json`; in `run_nightly()` integriert; `python app.py fitness-guard [--check F --baseline B]`
+- **📊 REST-Dashboard** — `13_ui/dashboard.py`: self-contained KPI-Dashboard (HTML + JSON) aus Memory/HoF/Skills/Guard; `GET /dashboard`, `/dashboard/summary`, `/dashboard/guard`; `python app.py dashboard`
+
+```bash
+python app.py validate fasta_inbox/example_messy.fasta
+python app.py fitness-guard --check 0.9
+python app.py dashboard
+make test        # 150 Tests (122 v6 + 28 v6-A)
+```
+
 ---
 
 ## 🧪 Live Demo - Was er gelernt hat

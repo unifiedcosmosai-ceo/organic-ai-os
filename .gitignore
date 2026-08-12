@@ -35,6 +35,7 @@ memory/replay_demo.json
 memory/memory.json
 memory/organism_memory.json
 memory/best_parser.py
+memory/fitness_guard.json
 memory/replay_log.json
 memory/replay_demo.json
 reports/brainstorm_v6/

@@ -589,3 +589,83 @@ Der Loop (`tools/regression_loop.py`):
 ```bash
 make test   # 122 Tests (alle Layer inkl. core + 13_ui)
 ```
+
+## 20. Validierungs-Schema (v6 Phase A)
+
+Schemabasierte Validierung geparster Records - bevor Daten weiterverarbeitet
+oder promotet werden (IUPAC-Alphabet, nicht-leer, eindeutige Header,
+FASTQ-Qualitaetslaenge, max. Sequenzlaenge).
+
+### CLI
+
+```bash
+python app.py validate fasta_inbox/example_messy.fasta
+python app.py validate datei.fastq --schema fastq
+python app.py validate datei.fa --max-len 1000
+```
+
+### API
+
+```bash
+curl -X POST localhost:8000/validate -H 'Content-Type: application/json' \
+     -d '{"content": ">a\nATXZ?\n", "schema": "auto"}'
+# → {"format":"fasta","schema":"fasta","total":1,"ok":false,"violated":1,
+#    "violations":[{"record":"a","rule":"alphabet","detail":"..."}]}
+```
+
+### Tests
+
+```bash
+make test-validate   # 12 Tests
+```
+
+## 21. Fitness-Fruehwarnung (v6 Phase A)
+
+Score-Drop-Alarm: stoppt Regression, **bevor** sie promotet wird. Die
+naechtliche Evolution fragt den Guard, bevor sie `best_parser.py` ersetzt.
+
+```
+fitness <= 0            -> reject (lethal)
+fitness < base - 0.05   -> reject (score-drop ALARM)
+fitness < base          -> hold   (kein Promoten)
+sonst                   -> promote
+```
+
+Persistenz: `memory/fitness_guard.json` (best, alarms, history).
+
+### CLI
+
+```bash
+python app.py fitness-guard                 # Status (best/alarms/checks)
+python app.py fitness-guard --check 0.85    # Kandidat pruefen (Baseline = best)
+python app.py fitness-guard --check 0.4 --baseline 0.8 --name neu
+```
+
+### Tests
+
+```bash
+make test-guard   # 8 Tests
+```
+
+## 22. REST-Dashboard (v6 Phase A)
+
+Self-contained KPI-Dashboard (kein CDN) mit KPI-Tiles, Fitness-Historie und
+Fruehwarnungs-Log.
+
+```bash
+python app.py dashboard    # -> reports/dashboard/ (dashboard.html + dashboard.json)
+python app.py serve        # Live: http://localhost:8000/dashboard
+```
+
+| Endpoint | Inhalt |
+|----------|--------|
+| `GET /dashboard` | HTML-Dashboard |
+| `GET /dashboard/summary` | JSON-Summary (alle KPIs + Verlaeufe) |
+| `GET /dashboard/guard` | Guard-Zustand (baseline, alarms, history) |
+
+### Tests
+
+```bash
+make test-dashboard   # 8 Tests
+make test             # 150 Tests (alle Layer)
+```

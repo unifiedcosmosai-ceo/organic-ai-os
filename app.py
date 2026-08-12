@@ -20,6 +20,9 @@ CLI-Subcommands:
   python app.py status               Statusreport aus Memory/Hall of Fame
   python app.py coevolve             Prompt<->Code Co-Evolution starten
   python app.py report               Tagesreport erzeugen (JSON + HTML)
+  python app.py validate <file>      Records gegen Schema validieren (v6)
+  python app.py fitness-guard        Fitness-Fruehwarnung: Status/Check (v6)
+  python app.py dashboard            REST-Dashboard-Artefakte bauen (v6)
   python app.py demo                 Code-Evolutions-Demo
   python app.py neuro-demo           Prompt-Evolutions-Demo
 """
@@ -197,6 +200,51 @@ def cmd_brainstorm(args):
     print(f"\nArtefakte -> {out}/")
     print("  top100.json · mindmap.md · mindmap.mmd · mindmap.html · mindmap_tree.json")
     print("UI starten:  python app.py serve  ->  http://localhost:8000/ui")
+
+
+def cmd_validate(args):
+    """Validiert eine Datei gegen das Schema (FASTA/FASTQ, v6)."""
+    import validation_schema
+
+    path = Path(args.file)
+    content = path.read_text(errors="ignore")
+    report = validation_schema.validate_content(content, schema=args.schema,
+                                                max_seq_len=args.max_len)
+    print(f"Format: {report.format} | Schema: {report.schema} "
+          f"| Records: {report.total} | ok: {report.ok} | Violations: {report.violated}")
+    for v in report.violations[:20]:
+        print(f"  ✗ {v.record}: {v.rule} — {v.detail}")
+
+
+def cmd_fitness_guard(args):
+    """Fitness-Fruehwarnung: Status oder Kandidaten-Check (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "11_evolution"))
+    from fitness_guard import FitnessGuard
+
+    guard = FitnessGuard(path=Path("memory") / "fitness_guard.json")
+    guard.load()
+    if args.check is None:
+        s = guard.summary()
+        print(f"best={s['best']} | alarms={s['alarms']} | checks={s['checks']}")
+        if s["last"]:
+            print(f"letzter Check: {s['last']}")
+        return
+    res = guard.check_candidate(name=args.name, fitness=args.check,
+                                baseline=args.baseline)
+    print(f"{res['decision'].upper()} — {res['reason']} | "
+          f"fitness={res['fitness']} baseline={res['baseline']}")
+
+
+def cmd_dashboard(args):
+    """REST-Dashboard-Artefakte bauen (v6)."""
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).parent / "13_ui"))
+    import dashboard
+
+    files = dashboard.build_files()
+    print(f"Dashboard -> reports/dashboard/ ({', '.join(files)})")
+    print("Live:  python app.py serve  ->  http://localhost:8000/dashboard")
 
 
 def cmd_coevolve(args):
@@ -466,6 +514,22 @@ def main():
     bst_p.add_argument("--iterations", type=int, default=400, help="Rollouts je Baum")
     bst_p.add_argument("--seed", type=int, default=42, help="Deterministischer Seed")
 
+    val_p = sub.add_parser("validate", help="Records gegen Schema validieren (FASTA/FASTQ, v6)")
+    val_p.add_argument("file", help="Pfad zur Sequenzdatei")
+    val_p.add_argument("--schema", choices=["fasta", "fastq", "auto"], default="auto",
+                       help="Schema erzwingen oder Auto-Detect")
+    val_p.add_argument("--max-len", type=int, default=None,
+                       help="Maximale Sequenzlaenge in bp")
+
+    fg_p = sub.add_parser("fitness-guard", help="Fitness-Fruehwarnung: Status/Check (v6)")
+    fg_p.add_argument("--check", type=float, default=None,
+                      help="Kandidaten-Fitness testen (Entscheidung anzeigen)")
+    fg_p.add_argument("--baseline", type=float, default=None,
+                      help="Baseline fuer den Check (default: gespeichertes best)")
+    fg_p.add_argument("--name", default="candidate", help="Kandidaten-Name")
+
+    dash_p = sub.add_parser("dashboard", help="REST-Dashboard-Artefakte bauen (v6)")
+
     args = parser.parse_args()
 
     if args.command == "demo":
@@ -496,6 +560,12 @@ def main():
         cmd_agent(args)
     elif args.command == "brainstorm":
         cmd_brainstorm(args)
+    elif args.command == "validate":
+        cmd_validate(args)
+    elif args.command == "fitness-guard":
+        cmd_fitness_guard(args)
+    elif args.command == "dashboard":
+        cmd_dashboard(args)
     elif args.command == "serve":
         import uvicorn
         from api_server import app

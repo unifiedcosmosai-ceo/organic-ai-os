@@ -594,3 +594,38 @@ GET /ui → 200
 make test-loop  → COMPILE 0 | AUDIT 0 | TEST 122 passed
 python3 tools/regression_loop.py --loop 3 → konvergiert mit 0 Fehlern
 ```
+
+## 22. v6 Phase A: Top-Ideen (Validierungs-Schema + Fitness-Fruehwarnung + REST-Dashboard)
+
+**User:** (Fortsetzung v6) die Top-Ideen des MCTS-Idea-Forest umsetzen
+
+**Assistant:**
+- **Branch**: `v6/top-ideas` (aus `v5/practical-coevolve`)
+- **`validation_schema.py`**: schemabasierte Records-Validierung (IUPAC-
+  Alphabet, nonempty, unique_headers, fastq qual_length, max_seq_len);
+  `ValidationReport.to_dict()`; `validate_content` (Auto-Detect); `POST
+  /validate`, CLI `app.py validate`, `validate_tool`
+- **`11_evolution/fitness_guard.py`**: `check_candidate` → promote/hold/reject
+  (lethal/score-drop/below-baseline/new-best), persistente Baseline
+  `memory/fitness_guard.json`; in `NightlyEvolution.run_nightly()` integriert
+  (Promotion nur bei `new >= old AND promote`); CLI `app.py fitness-guard`,
+  `fitness_guard_tool`
+- **`13_ui/dashboard.py`**: self-contained KPI-Dashboard (inline CSS/JS, kein
+  CDN) mit Tiles, Fitness-Bars und Guard-Log; `GET /dashboard`,
+  `/dashboard/summary`, `/dashboard/guard`; CLI `app.py dashboard`,
+  `dashboard_tool`
+- **Makefile**: `test-validate`, `test-guard`, `test-dashboard`
+- **Tests**: 28 neue (12+8+8); `make test` → **150 passed**
+- **Doku**: README „v6 Phase A", MANUAL §20–22, DOCS §20–22, CHAT_LOG §22
+
+### Demonstriert
+```
+150 passed in ~3s
+python app.py validate fasta_inbox/example_messy.fasta
+# Format: fasta | Schema: fasta | Records: 2 | ok: True | Violations: 0
+python app.py fitness-guard --check 0.4 --baseline 0.8
+# REJECT — score-drop | fitness=0.4 baseline=0.8
+python app.py dashboard  → reports/dashboard/ (dashboard.html + dashboard.json)
+GET /dashboard/summary → {"evolution_count":..., "fitness_history":[...], "guard":{...}}
+POST /validate → {"ok": false, "violations":[{"record":"a","rule":"alphabet",...}]}
+```
